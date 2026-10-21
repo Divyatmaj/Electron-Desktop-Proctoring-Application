@@ -1,0 +1,499 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+
+  font-family:
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    Helvetica,
+    Arial,
+    sans-serif;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  min-height: 100%;
+}
+
+body {
+  background: #f5f4f2;
+  color: #282828;
+}
+
+/* =========================
+   Setup Page
+========================= */
+
+.page-container {
+  width: 100%;
+  min-height: 100vh;
+
+  padding: 60px 40px;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* =========================
+   Header
+========================= */
+
+.header-section {
+  text-align: center;
+
+  margin-bottom: 30px;
+}
+
+.header-section h1 {
+  font-size: 20px;
+  font-weight: 500;
+
+  color: #242424;
+
+  margin-bottom: 6px;
+}
+
+.header-section p {
+  font-size: 17px;
+  font-weight: 400;
+
+  color: #333333;
+}
+
+/* =========================
+   Main Card
+========================= */
+
+.card-container {
+  width: 100%;
+  max-width: 920px;
+
+  background: #ffffff;
+
+  border: 1px solid #e7e4df;
+  border-radius: 12px;
+
+  overflow: hidden;
+
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.025);
+}
+
+/* =========================
+   Permission Section
+========================= */
+
+.permission-item {
+  display: grid;
+
+  grid-template-columns: 42px 1fr;
+
+  column-gap: 26px;
+
+  padding: 44px 48px;
+}
+
+/* =========================
+   Icon
+========================= */
+
+.permission-icon {
+  width: 42px;
+  height: 42px;
+
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+
+  padding-top: 4px;
+
+  color: #464646;
+
+  font-size: 22px;
+}
+
+/* =========================
+   Permission Content
+========================= */
+
+.permission-content {
+  text-align: left;
+}
+
+.permission-content h3 {
+  font-size: 21px;
+
+  font-weight: 600;
+
+  color: #2b2b2b;
+
+  margin-bottom: 10px;
+}
+
+.permission-content p {
+  font-size: 15px;
+
+  color: #666666;
+
+  margin-bottom: 24px;
+
+  line-height: 1.5;
+}
+
+/* =========================
+   Divider
+========================= */
+
+.divider {
+  height: 1px;
+
+  background: #ebe9e5;
+
+  margin-left: 48px;
+  margin-right: 48px;
+}
+
+/* =========================
+   Buttons
+========================= */
+
+.btn {
+  padding: 12px 24px;
+
+  border-radius: 8px;
+
+  border: none;
+
+  font-size: 14px;
+  font-weight: 600;
+
+  cursor: pointer;
+
+  transition:
+    background 0.15s ease,
+    transform 0.1s ease;
+}
+
+.btn:active {
+  transform: scale(0.98);
+}
+
+/* Reference dark button */
+
+.btn-dark {
+  background: #263c53;
+
+  color: white;
+}
+
+.btn-dark:hover {
+  background: #1f3246;
+}
+
+/* Reference blue */
+
+.btn-light-blue {
+  background: #7eb5e9;
+
+  color: white;
+}
+
+.btn-light-blue:hover {
+  background: #6ca8df;
+}
+
+/* White secondary button */
+
+.btn-outline {
+  background: white;
+
+  border: 1px solid #d9d6d1;
+
+  color: #333333;
+}
+
+.btn-outline:hover {
+  background: #faf9f7;
+}
+
+/* =========================
+   Bottom Buttons
+========================= */
+
+.bottom-actions {
+  width: 100%;
+  max-width: 920px;
+
+  display: flex;
+
+  gap: 12px;
+
+  margin-top: 18px;
+
+  justify-content: flex-start;
+}
+
+/* =========================
+   Camera
+========================= */
+
+.video-preview {
+  position: fixed;
+
+  top: 20px;
+  right: 20px;
+
+  width: 180px;
+  height: 115px;
+
+  object-fit: cover;
+
+  border-radius: 8px;
+
+  background: #111111;
+
+  z-index: 10;
+}
+
+/*
+This keeps the camera element alive
+for screenshots but prevents it from
+appearing in the layout.
+*/
+
+.hidden-video {
+  position: fixed;
+
+  width: 1px;
+  height: 1px;
+
+  opacity: 0;
+
+  pointer-events: none;
+
+  top: -100px;
+  left: -100px;
+}
+
+/* =========================
+   Exam Page
+========================= */
+
+.exam-page {
+  width: 100%;
+  min-height: 100vh;
+
+  background: #f5f4f2;
+
+  padding: 48px 40px;
+}
+
+.exam-container {
+  width: 100%;
+  max-width: 920px;
+
+  margin: 0 auto;
+}
+
+/* =========================
+   Exam Header
+========================= */
+
+.exam-header {
+  display: flex;
+
+  justify-content: space-between;
+  align-items: center;
+
+  margin-bottom: 18px;
+}
+
+.exam-header h3 {
+  font-size: 16px;
+
+  font-weight: 500;
+
+  color: #333333;
+}
+
+.end-test-btn {
+  padding: 11px 20px;
+
+  border: none;
+  border-radius: 8px;
+
+  background: #263c53;
+
+  color: white;
+
+  font-size: 14px;
+  font-weight: 600;
+
+  cursor: pointer;
+}
+
+/* =========================
+   Question Card
+========================= */
+
+.question-card {
+  background: #ffffff;
+
+  border: 1px solid #e7e4df;
+
+  border-radius: 12px;
+
+  padding: 36px 40px;
+
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.025);
+}
+
+.question-card h2 {
+  font-size: 14px;
+
+  color: #777777;
+
+  font-weight: 500;
+
+  margin-bottom: 14px;
+}
+
+.question-card > p {
+  font-size: 20px;
+
+  font-weight: 600;
+
+  color: #292929;
+
+  margin-bottom: 26px;
+}
+
+/* =========================
+   Options
+========================= */
+
+.option-row {
+  width: 100%;
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 12px;
+
+  padding: 14px 16px;
+
+  margin-bottom: 10px;
+
+  border: 1px solid #e6e3df;
+
+  border-radius: 8px;
+
+  background: white;
+
+  cursor: pointer;
+}
+
+.option-row:hover {
+  background: #faf9f7;
+}
+
+.option-row input {
+  width: 17px;
+  height: 17px;
+
+  accent-color: #263c53;
+}
+
+/* =========================
+   Navigation
+========================= */
+
+.navigation-buttons {
+  display: flex;
+
+  justify-content: space-between;
+
+  margin-top: 30px;
+}
+
+.navigation-buttons button {
+  padding: 11px 24px;
+
+  border: none;
+
+  border-radius: 8px;
+
+  background: #263c53;
+
+  color: white;
+
+  font-size: 14px;
+  font-weight: 600;
+
+  cursor: pointer;
+}
+
+.navigation-buttons button:disabled {
+  background: #c2c7cd;
+
+  cursor: not-allowed;
+}
+
+@media (prefers-color-scheme: dark) {
+  body {
+    background: #161616;
+    color: #f5f5f5;
+  }
+
+  .page-container,
+  .exam-page {
+    background: #161616;
+  }
+
+  .card-container,
+  .question-card {
+    background: #222222;
+    border-color: #343434;
+  }
+
+  .header-section h1,
+  .permission-content h3,
+  .question-card > p,
+  .exam-header h3 {
+    color: #f5f5f5;
+  }
+
+  .header-section p,
+  .permission-content p,
+  .question-card h2 {
+    color: #aaaaaa;
+  }
+
+  .divider {
+    background: #343434;
+  }
+
+  .option-row {
+    background: #222222;
+    border-color: #3a3a3a;
+    color: #f5f5f5;
+  }
+
+  .option-row:hover {
+    background: #2a2a2a;
+  }
+
+  .btn-outline {
+    background: #222222;
+    color: #f5f5f5;
+    border-color: #3a3a3a;
+  }
+}

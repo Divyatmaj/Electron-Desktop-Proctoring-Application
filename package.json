@@ -1,0 +1,45 @@
+{
+  "name": "athena-proctoring",
+  "version": "1.0.0",
+  "description": "A desktop application that does proctoring of the students ",
+  "homepage": "https://github.com/Divyatmaj/Electron-Desktop-Proctoring-Application#readme",
+  "bugs": {
+    "url": "https://github.com/Divyatmaj/Electron-Desktop-Proctoring-Application/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Divyatmaj/Electron-Desktop-Proctoring-Application.git"
+  },
+  "license": "ISC",
+  "author": "DJ",
+  "type": "commonjs",
+  "main": "electron/main.js",
+  "scripts": {
+    "dev": "concurrently -k \"npm run dev:renderer\" \"npm run dev:electron\"",
+    "dev:renderer": "vite",
+    "dev:electron": "wait-on tcp:127.0.0.1:5173 && electron . --dev",
+    "start": "npm run dev",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "eslint .",
+    "check": "npm run lint && npm run build",
+    "test": "npm run check",
+    "start:built": "npm run build && electron ."
+  },
+  "dependencies": {
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@vitejs/plugin-react": "^6.1.2",
+    "concurrently": "^10.0.6",
+    "electron": "^44.9.1",
+    "eslint": "^10.13.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.7",
+    "globals": "^17.13.0",
+    "vite": "^8.3.4",
+    "wait-on": "^9.5.1"
+  }
+}
