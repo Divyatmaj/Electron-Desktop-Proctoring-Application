@@ -2,18 +2,31 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import "./App.css";
 import MainExam from "./components/MainExam";
 import Results from "./components/Results";
+import SetupScreen from "./components/SetupScreen";
+import TitleBar from "./components/TitleBar";
 
 const SNAPSHOT_INTERVAL_MS = 1000;
 
 function App() {
+  // Hidden video + canvas used only for snapshots; visible previews are
+  // separate <CameraPreview> elements fed from the same stream.
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
 
   // "setup" -> "exam" -> "results"
   const [stage, setStage] = useState("setup");
+  const [examInfo, setExamInfo] = useState(null);
+  const [stream, setStream] = useState(null);
   const [timeLeft, setTimeLeft] = useState(null);
-  const [cameraReady, setCameraReady] = useState(false);
   const [result, setResult] = useState(null);
+
+  useEffect(() => {
+    window.electronAPI.getExamInfo().then(setExamInfo);
+  }, []);
+
+  useEffect(() => {
+    if (videoRef.current) videoRef.current.srcObject = stream;
+  }, [stream]);
 
   useEffect(() => {
     if (stage !== "exam") return;
@@ -58,32 +71,12 @@ function App() {
   useEffect(() => {
     if (stage !== "results") return;
 
-    const stream = videoRef.current?.srcObject;
     stream?.getTracks().forEach((track) => track.stop());
-  }, [stage]);
-
-  async function getCamera() {
-    const videoData = await navigator.mediaDevices.getUserMedia({
-      video: true,
-    });
-
-    videoRef.current.srcObject = videoData;
-
-    setCameraReady(true);
-  }
-
-  async function getFullscreen() {
-    await window.electronAPI.setFullScreen();
-  }
+  }, [stage, stream]);
 
   async function startTest() {
-    const res = await window.electronAPI.showRules();
-
-    if (res === 0) {
-      await window.electronAPI.startTest();
-
-      setStage("exam");
-    }
+    await window.electronAPI.startTest();
+    setStage("exam");
   }
 
   const handleSubmitted = useCallback((examResult) => {
@@ -92,86 +85,37 @@ function App() {
   }, []);
 
   return (
-    <>
-      {/*
-        The video stays mounted for the whole session so snapshots keep
-        working; outside the setup screen it is only hidden.
-      */}
-      <video
-        ref={videoRef}
-        autoPlay
-        muted
-        className={
-          cameraReady && stage === "setup" ? "video-preview" : "hidden-video"
-        }
+    <div className="app">
+      <TitleBar
+        subtitle={stage === "exam" ? "Exam in progress" : null}
+        showControls={stage !== "exam"}
       />
 
-      <canvas ref={canvasRef} style={{ display: "none" }} />
+      <main className="app-main">
+        {examInfo && stage === "setup" && (
+          <SetupScreen
+            examInfo={examInfo}
+            stream={stream}
+            onCameraReady={setStream}
+            onStart={startTest}
+          />
+        )}
 
-      {stage === "exam" && (
-        <MainExam timeLeftMs={timeLeft} onSubmitted={handleSubmitted} />
-      )}
+        {examInfo && stage === "exam" && (
+          <MainExam
+            examInfo={examInfo}
+            stream={stream}
+            timeLeftMs={timeLeft}
+            onSubmitted={handleSubmitted}
+          />
+        )}
 
-      {stage === "results" && result && <Results result={result} />}
+        {stage === "results" && result && <Results result={result} />}
+      </main>
 
-      {stage === "setup" && (
-        <div className="page-container">
-          <div className="header-section">
-            <h1>Hi User!</h1>
-
-            <p>Kindly Allow the following Permissions to Start the test:</p>
-          </div>
-
-          <div className="card-container">
-            {/* Camera */}
-
-            <div className="permission-item">
-              <div className="permission-icon">↗</div>
-
-              <div className="permission-content">
-                <h3>Configure Camera</h3>
-
-                <p>Kindly configure Camera to attempt quiz/contests.</p>
-
-                <div className="action-row">
-                  <button onClick={getCamera} className="btn btn-dark">
-                    Get Camera Access
-                  </button>
-                </div>
-
-                {cameraReady && <div className="camera-space" />}
-              </div>
-            </div>
-
-            <div className="divider" />
-
-            {/* Fullscreen */}
-
-            <div className="permission-item">
-              <div className="permission-icon">⛶</div>
-
-              <div className="permission-content">
-                <h3>Switch to full screen</h3>
-
-                <p>Kindly close all tabs and switch to full screen.</p>
-
-                <button onClick={getFullscreen} className="btn btn-light-blue">
-                  Give Full Screen Permissions
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div className="bottom-actions">
-            <button onClick={startTest} className="btn btn-light-blue">
-              Go To Test
-            </button>
-
-            <button className="btn btn-outline">Need Help?</button>
-          </div>
-        </div>
-      )}
-    </>
+      <video ref={videoRef} className="capture-video" autoPlay muted />
+      <canvas ref={canvasRef} hidden />
+    </div>
   );
 }
 

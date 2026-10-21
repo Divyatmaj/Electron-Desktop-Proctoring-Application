@@ -2,10 +2,12 @@ const { BrowserWindow, app, ipcMain, dialog, nativeTheme } = require("electron")
 const path = require("path");
 const fs = require("fs");
 
-const questions = require("./data/questions.json");
+const exam = require("./data/exam.json");
 
 const DEV_SERVER_URL = "http://127.0.0.1:5173/";
-const EXAM_DURATION_MS = 60 * 60 * 1000;
+const EXAM_DURATION_MS = exam.durationMinutes * 60 * 1000;
+
+const { questions } = exam;
 
 const isDev = process.argv.includes("--dev");
 
@@ -71,10 +73,17 @@ function gradeAnswers(answers) {
 
 ipcMain.handle("full-screen", () => {
   win.kiosk = true;
+  return win.kiosk;
+});
+
+ipcMain.handle("window-minimize", () => {
+  if (!win.kiosk) win.minimize();
 });
 
 ipcMain.handle("get-exam-info", () => {
   return {
+    title: exam.title,
+    rules: exam.rules,
     totalQuestions: questions.length,
     durationMs: EXAM_DURATION_MS,
   };
@@ -91,25 +100,6 @@ ipcMain.handle("get-time", () => {
   if (session.endTime === null) return 0;
   if (session.result) return 0;
   return Math.max(0, session.endTime - Date.now());
-});
-
-ipcMain.handle("show-rules", async () => {
-  const result = await dialog.showMessageBox(win, {
-    type: "info",
-    title: "Exam Rules",
-    message: "Please read the exam rules carefully.",
-    detail: `
-1. Camera must remain enabled.
-2. Do not exit fullscreen mode.
-3. Do not use external applications.
-4. The exam will start only after accepting the rules.
-    `,
-    buttons: ["Accept", "Cancel"],
-    defaultId: 0,
-    cancelId: 1,
-  });
-
-  return result.response;
 });
 
 ipcMain.handle("confirm-end-test", async (_event, unanswered) => {

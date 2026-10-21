@@ -2,10 +2,10 @@ const { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("electronAPI", {
   setFullScreen: () => ipcRenderer.invoke("full-screen"),
+  minimizeWindow: () => ipcRenderer.invoke("window-minimize"),
   getExamInfo: () => ipcRenderer.invoke("get-exam-info"),
   getRemainingTime: () => ipcRenderer.invoke("get-time"),
   startTest: () => ipcRenderer.invoke("start-test"),
-  showRules: () => ipcRenderer.invoke("show-rules"),
   getQuestion: (id) => ipcRenderer.invoke("get-question", id),
   confirmEndTest: (unanswered) =>
     ipcRenderer.invoke("confirm-end-test", unanswered),
