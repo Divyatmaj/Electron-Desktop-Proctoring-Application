@@ -1,11 +1,26 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { formatClock } from "../utils/time";
 
-const TOTAL_QUESTIONS = 5;
-
-function MainExam({ time }) {
+function MainExam({ timeLeftMs, onSubmitted }) {
+  const [totalQuestions, setTotalQuestions] = useState(0);
   const [questionId, setQuestionId] = useState(1);
   const [question, setQuestion] = useState(null);
-  const [selectedOption, setSelectedOption] = useState(null);
+  // { [questionId]: selectedOptionIndex }
+  const [answers, setAnswers] = useState({});
+  const [submitting, setSubmitting] = useState(false);
+
+  // A ref rather than state so a timeout and a manual submit that land at
+  // the same moment can't both go through.
+  const submittedRef = useRef(false);
+
+  useEffect(() => {
+    async function loadExamInfo() {
+      const info = await window.electronAPI.getExamInfo();
+      setTotalQuestions(info.totalQuestions);
+    }
+
+    loadExamInfo();
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -22,23 +37,41 @@ function MainExam({ time }) {
     };
   }, [questionId]);
 
-  function nextQuestion() {
-    if (questionId === TOTAL_QUESTIONS) return;
+  const submit = useCallback(
+    async (reason) => {
+      if (submittedRef.current) return;
+      submittedRef.current = true;
+      setSubmitting(true);
 
-    setQuestionId(questionId + 1);
-    setSelectedOption(null);
+      const result = await window.electronAPI.submitTest(answers, reason);
+      onSubmitted(result);
+    },
+    [answers, onSubmitted],
+  );
+
+  useEffect(() => {
+    if (timeLeftMs === 0) submit("timeout");
+  }, [timeLeftMs, submit]);
+
+  function selectOption(index) {
+    setAnswers((prev) => ({ ...prev, [questionId]: index }));
   }
 
-  function previousQuestion() {
-    if (questionId === 1) return;
-
-    setQuestionId(questionId - 1);
-    setSelectedOption(null);
+  function goTo(id) {
+    if (id < 1 || id > totalQuestions) return;
+    setQuestionId(id);
   }
 
-  function endTest() {
-    console.log("End Test clicked");
+  async function endTest() {
+    const unanswered = totalQuestions - Object.keys(answers).length;
+    const confirmed = await window.electronAPI.confirmEndTest(unanswered);
+
+    if (confirmed) submit("manual");
   }
+
+  const selectedOption = answers[questionId] ?? null;
+  const isLastQuestion = questionId === totalQuestions;
+  const isLowOnTime = timeLeftMs !== null && timeLeftMs < 5 * 60 * 1000;
 
   return (
     <div className="exam-page">
@@ -46,11 +79,38 @@ function MainExam({ time }) {
         {/* Exam Header */}
 
         <div className="exam-header">
-          <h3>Time Left: {time}</h3>
+          <h3 className={isLowOnTime ? "time-low" : undefined}>
+            Time Left: {timeLeftMs === null ? "--:--:--" : formatClock(timeLeftMs)}
+          </h3>
 
-          <button className="end-test-btn" onClick={endTest}>
-            End Test
+          <button
+            className="end-test-btn"
+            onClick={endTest}
+            disabled={submitting}
+          >
+            {submitting ? "Submitting…" : "End Test"}
           </button>
+        </div>
+
+        {/* Question palette */}
+
+        <div className="question-palette" aria-label="Questions">
+          {Array.from({ length: totalQuestions }, (_, i) => i + 1).map((id) => (
+            <button
+              key={id}
+              className={[
+                "palette-item",
+                id === questionId && "current",
+                answers[id] !== undefined && "answered",
+              ]
+                .filter(Boolean)
+                .join(" ")}
+              onClick={() => goTo(id)}
+              aria-current={id === questionId ? "step" : undefined}
+            >
+              {id}
+            </button>
+          ))}
         </div>
 
         {/* Question */}
@@ -58,7 +118,7 @@ function MainExam({ time }) {
         {question && (
           <div className="question-card">
             <h2>
-              Question {questionId} of {TOTAL_QUESTIONS}
+              Question {questionId} of {totalQuestions}
             </h2>
 
             <p>{question.question}</p>
@@ -69,9 +129,10 @@ function MainExam({ time }) {
               <label key={index} className="option-row">
                 <input
                   type="radio"
-                  name="answer"
+                  name={`answer-${questionId}`}
                   checked={selectedOption === index}
-                  onChange={() => setSelectedOption(index)}
+                  onChange={() => selectOption(index)}
+                  disabled={submitting}
                 />
 
                 <span>{option}</span>
@@ -81,16 +142,20 @@ function MainExam({ time }) {
             {/* Navigation */}
 
             <div className="navigation-buttons">
-              <button onClick={previousQuestion} disabled={questionId === 1}>
+              <button
+                onClick={() => goTo(questionId - 1)}
+                disabled={questionId === 1}
+              >
                 Previous
               </button>
 
-              <button
-                onClick={nextQuestion}
-                disabled={questionId === TOTAL_QUESTIONS}
-              >
-                Next
-              </button>
+              {isLastQuestion ? (
+                <button onClick={endTest} disabled={submitting}>
+                  Finish
+                </button>
+              ) : (
+                <button onClick={() => goTo(questionId + 1)}>Next</button>
+              )}
             </div>
           </div>
         )}

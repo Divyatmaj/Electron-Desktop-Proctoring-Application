@@ -1,49 +1,36 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import "./App.css";
 import MainExam from "./components/MainExam";
+import Results from "./components/Results";
 
 const SNAPSHOT_INTERVAL_MS = 1000;
-
-function formatTimeLeft(ms) {
-  const seconds = Math.floor((ms / 1000) % 60)
-    .toString()
-    .padStart(2, "0");
-
-  const minutes = Math.floor((ms / (1000 * 60)) % 60)
-    .toString()
-    .padStart(2, "0");
-
-  const hours = Math.floor(ms / (1000 * 60 * 60))
-    .toString()
-    .padStart(2, "0");
-
-  return `${hours}:${minutes}:${seconds}`;
-}
 
 function App() {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
 
-  const [time, setTime] = useState(0);
-  const [started, setStarted] = useState(false);
+  // "setup" -> "exam" -> "results"
+  const [stage, setStage] = useState("setup");
+  const [timeLeft, setTimeLeft] = useState(null);
   const [cameraReady, setCameraReady] = useState(false);
+  const [result, setResult] = useState(null);
 
   useEffect(() => {
-    if (!started) return;
+    if (stage !== "exam") return;
 
     async function refreshTime() {
       const remaining = await window.electronAPI.getRemainingTime();
-      setTime(remaining);
+      setTimeLeft(remaining);
     }
 
     refreshTime();
     const interval = setInterval(refreshTime, 1000);
 
     return () => clearInterval(interval);
-  }, [started]);
+  }, [stage]);
 
   useEffect(() => {
-    if (!started) return;
+    if (stage !== "exam") return;
 
     async function takePhoto() {
       const video = videoRef.current;
@@ -65,7 +52,15 @@ function App() {
     const interval = setInterval(takePhoto, SNAPSHOT_INTERVAL_MS);
 
     return () => clearInterval(interval);
-  }, [started]);
+  }, [stage]);
+
+  // Release the webcam once the exam is over so the camera light turns off.
+  useEffect(() => {
+    if (stage !== "results") return;
+
+    const stream = videoRef.current?.srcObject;
+    stream?.getTracks().forEach((track) => track.stop());
+  }, [stage]);
 
   async function getCamera() {
     const videoData = await navigator.mediaDevices.getUserMedia({
@@ -87,28 +82,39 @@ function App() {
     if (res === 0) {
       await window.electronAPI.startTest();
 
-      setStarted(true);
+      setStage("exam");
     }
   }
+
+  const handleSubmitted = useCallback((examResult) => {
+    setResult(examResult);
+    setStage("results");
+  }, []);
 
   return (
     <>
       {/*
         The video stays mounted for the whole session so snapshots keep
-        working; once the exam starts it is only hidden.
+        working; outside the setup screen it is only hidden.
       */}
       <video
         ref={videoRef}
         autoPlay
         muted
-        className={cameraReady && !started ? "video-preview" : "hidden-video"}
+        className={
+          cameraReady && stage === "setup" ? "video-preview" : "hidden-video"
+        }
       />
 
       <canvas ref={canvasRef} style={{ display: "none" }} />
 
-      {started ? (
-        <MainExam time={formatTimeLeft(time)} />
-      ) : (
+      {stage === "exam" && (
+        <MainExam timeLeftMs={timeLeft} onSubmitted={handleSubmitted} />
+      )}
+
+      {stage === "results" && result && <Results result={result} />}
+
+      {stage === "setup" && (
         <div className="page-container">
           <div className="header-section">
             <h1>Hi User!</h1>
