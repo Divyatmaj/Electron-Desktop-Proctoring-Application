@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import CameraPreview from "./CameraPreview";
 import { ArrowLeftIcon, ArrowRightIcon } from "./Icons";
 import { formatClock } from "../utils/time";
+import { describeViolation } from "../utils/violations";
 
 const OPTION_LETTERS = ["A", "B", "C", "D", "E", "F"];
 const LOW_TIME_MS = 5 * 60 * 1000;
@@ -14,6 +15,8 @@ function MainExam({ examInfo, stream, timeLeftMs, onSubmitted }) {
   // { [questionId]: selectedOptionIndex }
   const [answers, setAnswers] = useState({});
   const [submitting, setSubmitting] = useState(false);
+  // Latest { violation, count, max } from the main process, shown as a banner.
+  const [warning, setWarning] = useState(null);
 
   // A ref rather than state so a timeout and a manual submit that land at
   // the same moment can't both go through.
@@ -49,6 +52,32 @@ function MainExam({ examInfo, stream, timeLeftMs, onSubmitted }) {
   useEffect(() => {
     if (timeLeftMs === 0) submit("timeout");
   }, [timeLeftMs, submit]);
+
+  // Kept in a ref so the violation listener below can always call the
+  // latest submit (with the latest answers) without resubscribing.
+  const submitRef = useRef(submit);
+  useEffect(() => {
+    submitRef.current = submit;
+  }, [submit]);
+
+  useEffect(() => {
+    return window.electronAPI.onViolation((data) => {
+      setWarning(data);
+      if (data.limitReached) submitRef.current("violations");
+    });
+  }, []);
+
+  // A camera that's unplugged or taken by another app ends its track.
+  useEffect(() => {
+    if (!stream) return;
+
+    const tracks = stream.getVideoTracks();
+    const onEnded = () => window.electronAPI.reportViolation("camera-lost");
+
+    tracks.forEach((track) => track.addEventListener("ended", onEnded));
+    return () =>
+      tracks.forEach((track) => track.removeEventListener("ended", onEnded));
+  }, [stream]);
 
   // Keyboard: A–D / 1–4 pick an option, ←/→ move between questions.
   useEffect(() => {
@@ -134,6 +163,32 @@ function MainExam({ examInfo, stream, timeLeftMs, onSubmitted }) {
           </button>
         </div>
       </div>
+
+      {warning && (
+        <div className="exam-warning" role="alert">
+          <div>
+            <p className="exam-warning-title">
+              {describeViolation(warning.violation.type)}. This has been
+              logged.
+            </p>
+            <p className="exam-warning-detail">
+              {warning.limitReached
+                ? "You've reached the warning limit, so your test is being submitted."
+                : `Warning ${warning.count} of ${warning.max}. At ${warning.max} your test is submitted automatically.`}
+            </p>
+          </div>
+
+          {!warning.limitReached && (
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => setWarning(null)}
+            >
+              I understand
+            </button>
+          )}
+        </div>
+      )}
 
       <div className="exam-body">
         <section className="question-card" aria-live="polite">

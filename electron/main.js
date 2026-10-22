@@ -8,6 +8,11 @@ const DEV_SERVER_URL = "http://127.0.0.1:5173/";
 const EXAM_DURATION_MS = exam.durationMinutes * 60 * 1000;
 const SNAPSHOT_INTERVAL_MS = (exam.snapshotIntervalSeconds ?? 5) * 1000;
 const MAX_FIELD_LENGTH = 80;
+const MAX_VIOLATIONS = exam.maxViolations ?? 3;
+
+// Violations the renderer is allowed to report. Window focus and full screen
+// are watched here in the main process, where the renderer can't fake them.
+const RENDERER_VIOLATIONS = new Set(["camera-lost"]);
 
 const { questions } = exam;
 
@@ -21,6 +26,10 @@ const session = {
   id: null,
   student: null,
   snapshotCount: 0,
+  violations: [],
+  // True while one of our own native dialogs is up, since that also takes
+  // focus away from the window and shouldn't count against the student.
+  dialogOpen: false,
   startedAt: null,
   endTime: null,
   result: null,
@@ -36,6 +45,21 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
     },
+  });
+
+  win.on("blur", () => {
+    if (session.dialogOpen) return;
+    // Clicking into the detached DevTools isn't the student leaving.
+    if (isDev && win.webContents.isDevToolsFocused()) return;
+
+    recordViolation("focus-lost");
+  });
+
+  win.on("leave-full-screen", () => {
+    if (!isExamRunning()) return;
+
+    recordViolation("fullscreen-exited");
+    win.kiosk = true;
   });
 
   if (isDev) {
@@ -64,6 +88,24 @@ function cleanField(value) {
 function makeSessionId(rollNumber, startedAt) {
   const slug = rollNumber.replace(/[^a-zA-Z0-9-]+/g, "-").replace(/^-|-$/g, "");
   return `${slug || "student"}-${startedAt}`;
+}
+
+function isExamRunning() {
+  return session.startedAt !== null && session.result === null;
+}
+
+function recordViolation(type) {
+  if (!isExamRunning()) return;
+
+  const violation = { type, at: Date.now() };
+  session.violations.push(violation);
+
+  win.webContents.send("violation", {
+    violation,
+    count: session.violations.length,
+    max: MAX_VIOLATIONS,
+    limitReached: session.violations.length >= MAX_VIOLATIONS,
+  });
 }
 
 function gradeAnswers(answers) {
@@ -104,6 +146,7 @@ ipcMain.handle("get-exam-info", () => {
     totalQuestions: questions.length,
     durationMs: EXAM_DURATION_MS,
     snapshotIntervalMs: SNAPSHOT_INTERVAL_MS,
+    maxViolations: MAX_VIOLATIONS,
   };
 });
 
@@ -134,17 +177,23 @@ ipcMain.handle("confirm-end-test", async (_event, unanswered) => {
       ? `You still have ${unanswered} unanswered question${unanswered === 1 ? "" : "s"}. You can't change your answers after submitting.`
       : "You can't change your answers after submitting.";
 
-  const result = await dialog.showMessageBox(win, {
-    type: "question",
-    title: "End Test",
-    message: "Submit your test now?",
-    detail,
-    buttons: ["Submit", "Keep Working"],
-    defaultId: 1,
-    cancelId: 1,
-  });
+  session.dialogOpen = true;
 
-  return result.response === 0;
+  try {
+    const result = await dialog.showMessageBox(win, {
+      type: "question",
+      title: "End Test",
+      message: "Submit your test now?",
+      detail,
+      buttons: ["Submit", "Keep Working"],
+      defaultId: 1,
+      cancelId: 1,
+    });
+
+    return result.response === 0;
+  } finally {
+    session.dialogOpen = false;
+  }
 });
 
 ipcMain.handle("get-question", (_event, id) => {
@@ -153,6 +202,12 @@ ipcMain.handle("get-question", (_event, id) => {
 
   return { id: q.id, question: q.question, options: q.options };
 });
+
+ipcMain.handle("report-violation", (_event, type) => {
+  if (RENDERER_VIOLATIONS.has(type)) recordViolation(type);
+});
+
+const SUBMIT_REASONS = new Set(["manual", "timeout", "violations"]);
 
 ipcMain.handle("submit-test", (_event, answers, reason) => {
   if (session.startedAt === null) return null;
@@ -164,11 +219,12 @@ ipcMain.handle("submit-test", (_event, answers, reason) => {
     sessionId: session.id,
     student: session.student,
     ...gradeAnswers(answers ?? {}),
-    reason: reason === "timeout" ? "timeout" : "manual",
+    reason: SUBMIT_REASONS.has(reason) ? reason : "manual",
     startedAt: session.startedAt,
     submittedAt,
     durationMs: Math.min(submittedAt, session.endTime) - session.startedAt,
     snapshotCount: session.snapshotCount,
+    violations: session.violations,
   };
 
   const resultPath = path.join(getDataDir("results"), `${session.id}.json`);

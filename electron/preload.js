@@ -12,5 +12,12 @@ contextBridge.exposeInMainWorld("electronAPI", {
   submitTest: (answers, reason) =>
     ipcRenderer.invoke("submit-test", answers, reason),
   savePhoto: (image) => ipcRenderer.invoke("save-photo", image),
+  reportViolation: (type) => ipcRenderer.invoke("report-violation", type),
+  // Returns an unsubscribe function so React effects can clean up.
+  onViolation: (callback) => {
+    const listener = (_event, data) => callback(data);
+    ipcRenderer.on("violation", listener);
+    return () => ipcRenderer.removeListener("violation", listener);
+  },
   quitApp: () => ipcRenderer.invoke("quit-app"),
 });

@@ -2,12 +2,14 @@
   "title": "Programming Fundamentals Practice Quiz",
   "durationMinutes": 60,
   "snapshotIntervalSeconds": 5,
+  "maxViolations": 3,
   "rules": [
     "Keep your camera on and your face clearly visible for the whole test.",
     "Stay in full screen until you submit.",
     "Do not open other applications, browser tabs or notes.",
     "The timer starts when you press Start and cannot be paused.",
-    "Snapshots from your camera are saved while the test is running."
+    "Snapshots from your camera are saved while the test is running.",
+    "Leaving the Athena window, exiting full screen or losing the camera is logged. Reaching the warning limit submits your test automatically."
   ],
   "questions": [
     {

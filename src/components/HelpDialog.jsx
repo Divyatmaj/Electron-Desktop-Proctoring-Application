@@ -29,6 +29,7 @@ const TOPICS = [
       "Your answers are kept as you move between questions, and you can jump to any question from the panel on the right.",
       "Use A–D or 1–4 to pick an option and the arrow keys to move between questions.",
       "If time runs out, whatever you've answered is submitted automatically.",
+      "Switching to another window, leaving full screen or losing the camera shows a warning and is logged. After the last warning your test is submitted for you.",
     ],
   },
   {

@@ -1,4 +1,12 @@
-import { formatDuration } from "../utils/time";
+import { formatClock, formatDuration } from "../utils/time";
+import { describeViolation } from "../utils/violations";
+
+const REASON_TEXT = {
+  manual: "Your answers have been recorded. You can close Athena now.",
+  timeout: "Time ran out, so your answers were submitted automatically.",
+  violations:
+    "Your test was submitted automatically because the warning limit was reached.",
+};
 
 function Results({ result }) {
   const percent = Math.round((result.score / result.total) * 100);
@@ -12,9 +20,7 @@ function Results({ result }) {
           {result.student.name} · Roll no. {result.student.rollNumber}
         </p>
         <p className="page-lede">
-          {result.reason === "timeout"
-            ? "Time ran out, so your answers were submitted automatically."
-            : "Your answers have been recorded. You can close Athena now."}
+          {REASON_TEXT[result.reason] ?? REASON_TEXT.manual}
         </p>
       </header>
 
@@ -44,12 +50,33 @@ function Results({ result }) {
             <dt>Snapshots</dt>
             <dd>{result.snapshotCount}</dd>
           </div>
+          <div>
+            <dt>Warnings</dt>
+            <dd>{result.violations.length}</dd>
+          </div>
         </dl>
 
         <p className="results-session">
           Session ID <code>{result.sessionId}</code>
         </p>
       </section>
+
+      {result.violations.length > 0 && (
+        <>
+          <h2 className="section-heading">Logged events</h2>
+
+          <ol className="card incident-list">
+            {result.violations.map((violation, index) => (
+              <li key={index} className="incident">
+                <span className="incident-time">
+                  {formatClock(violation.at - result.startedAt)}
+                </span>
+                <span>{describeViolation(violation.type)}</span>
+              </li>
+            ))}
+          </ol>
+        </>
+      )}
 
       <h2 className="section-heading">Review</h2>
 

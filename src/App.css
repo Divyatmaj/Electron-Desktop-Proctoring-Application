@@ -654,6 +654,32 @@
   font-weight: 600;
 }
 
+.exam-warning {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+
+  margin-bottom: 24px;
+  padding: 14px 18px;
+
+  background: var(--bad-soft);
+  border: 1px solid var(--bad);
+  border-radius: var(--radius);
+}
+
+.exam-warning-title {
+  font-weight: 600;
+  color: var(--bad);
+}
+
+.exam-warning-detail {
+  margin-top: 2px;
+
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
 .exam-body {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 232px;
@@ -916,6 +942,28 @@ kbd {
 .results-stats dd {
   font-size: 17px;
   font-weight: 600;
+}
+
+.incident-list {
+  list-style: none;
+}
+
+.incident {
+  display: flex;
+  gap: 16px;
+
+  padding: 12px 20px;
+
+  font-size: 14px;
+}
+
+.incident + .incident {
+  border-top: 1px solid var(--border);
+}
+
+.incident-time {
+  font-family: var(--font-mono);
+  color: var(--text-muted);
 }
 
 .review-list {
