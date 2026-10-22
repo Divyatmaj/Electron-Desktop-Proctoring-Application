@@ -6,6 +6,8 @@ const exam = require("./data/exam.json");
 
 const DEV_SERVER_URL = "http://127.0.0.1:5173/";
 const EXAM_DURATION_MS = exam.durationMinutes * 60 * 1000;
+const SNAPSHOT_INTERVAL_MS = (exam.snapshotIntervalSeconds ?? 5) * 1000;
+const MAX_FIELD_LENGTH = 80;
 
 const { questions } = exam;
 
@@ -16,6 +18,9 @@ let win = null;
 // Single source of truth for the exam session. The renderer only ever sees
 // what it needs; correct answers never leave the main process.
 const session = {
+  id: null,
+  student: null,
+  snapshotCount: 0,
   startedAt: null,
   endTime: null,
   result: null,
@@ -47,6 +52,18 @@ function getDataDir(name) {
   const dir = path.join(app.getPath("userData"), name);
   fs.mkdirSync(dir, { recursive: true });
   return dir;
+}
+
+function cleanField(value) {
+  if (typeof value !== "string") return "";
+  return value.trim().replace(/\s+/g, " ").slice(0, MAX_FIELD_LENGTH);
+}
+
+// "21-CS 042" + 1761130000000 -> "21-CS-042-1761130000000". Safe to use as a
+// folder name and still easy to match back to the student by eye.
+function makeSessionId(rollNumber, startedAt) {
+  const slug = rollNumber.replace(/[^a-zA-Z0-9-]+/g, "-").replace(/^-|-$/g, "");
+  return `${slug || "student"}-${startedAt}`;
 }
 
 function gradeAnswers(answers) {
@@ -86,14 +103,23 @@ ipcMain.handle("get-exam-info", () => {
     rules: exam.rules,
     totalQuestions: questions.length,
     durationMs: EXAM_DURATION_MS,
+    snapshotIntervalMs: SNAPSHOT_INTERVAL_MS,
   };
 });
 
-ipcMain.handle("start-test", () => {
-  if (session.startedAt !== null) return;
+ipcMain.handle("start-test", (_event, student) => {
+  if (session.startedAt !== null) return session.id;
 
+  const name = cleanField(student?.name);
+  const rollNumber = cleanField(student?.rollNumber);
+  if (!name || !rollNumber) return null;
+
+  session.student = { name, rollNumber };
   session.startedAt = Date.now();
   session.endTime = session.startedAt + EXAM_DURATION_MS;
+  session.id = makeSessionId(rollNumber, session.startedAt);
+
+  return session.id;
 });
 
 ipcMain.handle("get-time", () => {
@@ -135,17 +161,17 @@ ipcMain.handle("submit-test", (_event, answers, reason) => {
   const submittedAt = Date.now();
 
   session.result = {
+    sessionId: session.id,
+    student: session.student,
     ...gradeAnswers(answers ?? {}),
     reason: reason === "timeout" ? "timeout" : "manual",
     startedAt: session.startedAt,
     submittedAt,
     durationMs: Math.min(submittedAt, session.endTime) - session.startedAt,
+    snapshotCount: session.snapshotCount,
   };
 
-  const resultPath = path.join(
-    getDataDir("results"),
-    `result-${submittedAt}.json`,
-  );
+  const resultPath = path.join(getDataDir("results"), `${session.id}.json`);
   fs.writeFileSync(resultPath, JSON.stringify(session.result, null, 2));
 
   // The exam is over, so the student shouldn't be stuck in kiosk mode.
@@ -158,16 +184,22 @@ ipcMain.handle("quit-app", () => {
   app.quit();
 });
 
+const JPEG_PREFIX = "data:image/jpeg;base64,";
+
 ipcMain.handle("save-photo", (_event, image) => {
-  if (session.result) return null;
+  if (session.id === null || session.result) return null;
+  if (typeof image !== "string" || !image.startsWith(JPEG_PREFIX)) return null;
 
-  const imageData = image.split(",")[1];
+  const imageData = image.slice(JPEG_PREFIX.length);
 
+  // One folder per exam session, so every snapshot can be traced back to the
+  // result file with the same name.
   const filePath = path.join(
-    getDataDir("camera_feed"),
-    `photo-${Date.now()}.png`,
+    getDataDir(path.join("camera_feed", session.id)),
+    `photo-${Date.now()}.jpg`,
   );
   fs.writeFileSync(filePath, Buffer.from(imageData, "base64"));
+  session.snapshotCount += 1;
 
   return filePath;
 });

@@ -3,6 +3,12 @@ import { CloseIcon } from "./Icons";
 
 const TOPICS = [
   {
+    title: "What to enter under “Your details”",
+    body: [
+      "Use your full name and roll number exactly as they appear on your college ID. Your result and camera snapshots are filed under them.",
+    ],
+  },
+  {
     title: "The camera won't turn on",
     body: [
       "Close other apps that might be using it, such as Zoom, Teams or FaceTime.",

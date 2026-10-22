@@ -8,6 +8,9 @@ function Results({ result }) {
     <div className="page page-narrow">
       <header className="page-header">
         <h1>Test submitted</h1>
+        <p className="page-meta">
+          {result.student.name} · Roll no. {result.student.rollNumber}
+        </p>
         <p className="page-lede">
           {result.reason === "timeout"
             ? "Time ran out, so your answers were submitted automatically."
@@ -37,7 +40,15 @@ function Results({ result }) {
             <dt>Time taken</dt>
             <dd>{formatDuration(result.durationMs)}</dd>
           </div>
+          <div>
+            <dt>Snapshots</dt>
+            <dd>{result.snapshotCount}</dd>
+          </div>
         </dl>
+
+        <p className="results-session">
+          Session ID <code>{result.sessionId}</code>
+        </p>
       </section>
 
       <h2 className="section-heading">Review</h2>

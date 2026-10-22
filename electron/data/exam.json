@@ -1,6 +1,7 @@
 {
   "title": "Programming Fundamentals Practice Quiz",
   "durationMinutes": 60,
+  "snapshotIntervalSeconds": 5,
   "rules": [
     "Keep your camera on and your face clearly visible for the whole test.",
     "Stay in full screen until you submit.",

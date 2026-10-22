@@ -5,7 +5,7 @@ import Results from "./components/Results";
 import SetupScreen from "./components/SetupScreen";
 import TitleBar from "./components/TitleBar";
 
-const SNAPSHOT_INTERVAL_MS = 1000;
+const SNAPSHOT_QUALITY = 0.8;
 
 function App() {
   // Hidden video + canvas used only for snapshots; visible previews are
@@ -16,6 +16,7 @@ function App() {
   // "setup" -> "exam" -> "results"
   const [stage, setStage] = useState("setup");
   const [examInfo, setExamInfo] = useState(null);
+  const [student, setStudent] = useState(null);
   const [stream, setStream] = useState(null);
   const [timeLeft, setTimeLeft] = useState(null);
   const [result, setResult] = useState(null);
@@ -43,7 +44,7 @@ function App() {
   }, [stage]);
 
   useEffect(() => {
-    if (stage !== "exam") return;
+    if (stage !== "exam" || !examInfo) return;
 
     async function takePhoto() {
       const video = videoRef.current;
@@ -58,14 +59,14 @@ function App() {
       const ctx = canvas.getContext("2d");
       ctx.drawImage(video, 0, 0);
 
-      const image = canvas.toDataURL("image/png");
+      const image = canvas.toDataURL("image/jpeg", SNAPSHOT_QUALITY);
       await window.electronAPI.savePhoto(image);
     }
 
-    const interval = setInterval(takePhoto, SNAPSHOT_INTERVAL_MS);
+    const interval = setInterval(takePhoto, examInfo.snapshotIntervalMs);
 
     return () => clearInterval(interval);
-  }, [stage]);
+  }, [stage, examInfo]);
 
   // Release the webcam once the exam is over so the camera light turns off.
   useEffect(() => {
@@ -74,9 +75,13 @@ function App() {
     stream?.getTracks().forEach((track) => track.stop());
   }, [stage, stream]);
 
-  async function startTest() {
-    await window.electronAPI.startTest();
+  async function startTest(details) {
+    const sessionId = await window.electronAPI.startTest(details);
+    if (!sessionId) return false;
+
+    setStudent(details);
     setStage("exam");
+    return true;
   }
 
   const handleSubmitted = useCallback((examResult) => {
@@ -87,7 +92,9 @@ function App() {
   return (
     <div className="app">
       <TitleBar
-        subtitle={stage === "exam" ? "Exam in progress" : null}
+        subtitle={
+          stage === "exam" ? `Exam in progress · ${student.name}` : null
+        }
         showControls={stage !== "exam"}
       />
 

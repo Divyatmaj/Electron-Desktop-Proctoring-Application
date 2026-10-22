@@ -5,7 +5,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   minimizeWindow: () => ipcRenderer.invoke("window-minimize"),
   getExamInfo: () => ipcRenderer.invoke("get-exam-info"),
   getRemainingTime: () => ipcRenderer.invoke("get-time"),
-  startTest: () => ipcRenderer.invoke("start-test"),
+  startTest: (student) => ipcRenderer.invoke("start-test", student),
   getQuestion: (id) => ipcRenderer.invoke("get-question", id),
   confirmEndTest: (unanswered) =>
     ipcRenderer.invoke("confirm-end-test", unanswered),

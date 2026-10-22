@@ -40,6 +40,8 @@ function Step({ number, done, title, description, children }) {
 }
 
 function SetupScreen({ examInfo, stream, onCameraReady, onStart }) {
+  const [name, setName] = useState("");
+  const [rollNumber, setRollNumber] = useState("");
   const [cameraError, setCameraError] = useState(null);
   const [cameraLoading, setCameraLoading] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
@@ -47,9 +49,12 @@ function SetupScreen({ examInfo, stream, onCameraReady, onStart }) {
   const [starting, setStarting] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
 
+  const detailsReady = name.trim() !== "" && rollNumber.trim() !== "";
   const cameraReady = stream !== null;
-  const doneCount = [cameraReady, fullscreen, agreed].filter(Boolean).length;
-  const canStart = doneCount === 3 && !starting;
+  const checks = [detailsReady, cameraReady, fullscreen, agreed];
+  const doneCount = checks.filter(Boolean).length;
+  const canStart = doneCount === checks.length && !starting;
+  const firstName = name.trim().split(" ")[0];
 
   async function requestCamera() {
     setCameraLoading(true);
@@ -74,7 +79,12 @@ function SetupScreen({ examInfo, stream, onCameraReady, onStart }) {
 
   async function start() {
     setStarting(true);
-    await onStart();
+
+    const started = await onStart({
+      name: name.trim(),
+      rollNumber: rollNumber.trim(),
+    });
+    if (!started) setStarting(false);
   }
 
   const minutes = Math.round(examInfo.durationMs / 60000);
@@ -87,13 +97,50 @@ function SetupScreen({ examInfo, stream, onCameraReady, onStart }) {
           {examInfo.totalQuestions} questions · {minutes} minutes
         </p>
         <p className="page-lede">
-          Finish the three checks below. You can start once they're all done.
+          {detailsReady ? `Hi ${firstName}! ` : ""}Finish the four checks
+          below. You can start once they're all done.
         </p>
       </header>
 
       <ol className="steps">
         <Step
           number={1}
+          done={detailsReady}
+          title="Your details"
+          description="These go on your result so your invigilator can match it to you."
+        >
+          <div className="fields">
+            <label className="field">
+              <span className="field-label">Full name</span>
+              <input
+                type="text"
+                className="field-input"
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                maxLength={80}
+                autoComplete="name"
+                disabled={starting}
+              />
+            </label>
+
+            <label className="field">
+              <span className="field-label">Roll number</span>
+              <input
+                type="text"
+                className="field-input"
+                value={rollNumber}
+                onChange={(event) => setRollNumber(event.target.value)}
+                maxLength={80}
+                autoComplete="off"
+                spellCheck={false}
+                disabled={starting}
+              />
+            </label>
+          </div>
+        </Step>
+
+        <Step
+          number={2}
           done={cameraReady}
           title="Camera"
           description="Your camera stays on for the whole test so the session can be reviewed later."
@@ -119,7 +166,7 @@ function SetupScreen({ examInfo, stream, onCameraReady, onStart }) {
         </Step>
 
         <Step
-          number={2}
+          number={3}
           done={fullscreen}
           title="Full screen"
           description="Close other windows first. Athena will fill the screen and stay there until you submit."
@@ -136,7 +183,7 @@ function SetupScreen({ examInfo, stream, onCameraReady, onStart }) {
         </Step>
 
         <Step
-          number={3}
+          number={4}
           done={agreed}
           title="Exam rules"
           description="Read these before you begin."
@@ -168,7 +215,7 @@ function SetupScreen({ examInfo, stream, onCameraReady, onStart }) {
         </button>
 
         <div className="setup-footer-end">
-          <span className="setup-progress">{doneCount} of 3 ready</span>
+          <span className="setup-progress">{doneCount} of {checks.length} ready</span>
 
           <button
             type="button"

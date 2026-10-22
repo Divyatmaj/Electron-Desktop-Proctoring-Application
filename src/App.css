@@ -356,6 +356,46 @@
   aspect-ratio: 4 / 3;
 }
 
+.fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.field {
+  display: grid;
+  gap: 6px;
+}
+
+.field-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.field-input {
+  width: 100%;
+  padding: 9px 12px;
+
+  background: var(--surface-muted);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+
+  font: inherit;
+  font-size: 15px;
+  color: var(--text);
+}
+
+.field-input:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 1px;
+  border-color: var(--ink);
+}
+
+.field-input:disabled {
+  opacity: 0.6;
+}
+
 .inline-error {
   margin-top: 12px;
   padding: 10px 12px;
@@ -928,6 +968,21 @@ kbd {
   color: var(--text);
 }
 
+.results-session {
+  margin-top: 24px;
+  padding-top: 16px;
+
+  border-top: 1px solid var(--border);
+
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.results-session code {
+  font-family: var(--font-mono);
+  color: var(--text);
+}
+
 .results-footer {
   margin-top: 32px;
 }
@@ -951,6 +1006,10 @@ kbd {
 
   .question-card {
     padding: 24px;
+  }
+
+  .fields {
+    grid-template-columns: 1fr;
   }
 
   .setup-footer {
