@@ -41,7 +41,11 @@ function App() {
         setStage("results");
       } else if (session.status === "running") {
         setStudent(session.student);
-        setProgress({ answers: session.answers, flagged: session.flagged });
+        setProgress({
+          answers: session.answers,
+          flagged: session.flagged,
+          warning: session.warning,
+        });
         setStage("exam");
         resumeCamera();
       }
@@ -122,7 +126,7 @@ function App() {
     if (!sessionId) return false;
 
     setStudent(details);
-    setProgress({ answers: {}, flagged: [] });
+    setProgress({ answers: {}, flagged: [], warning: null });
     setStage("exam");
     return true;
   }

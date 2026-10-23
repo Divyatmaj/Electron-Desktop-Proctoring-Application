@@ -52,6 +52,29 @@ function createWindow() {
     },
   });
 
+  // Closing the window mid-test would throw the exam away, so the only way
+  // out is End Test. A force quit is still possible, which is why the
+  // session is also saved to disk.
+  win.on("close", (event) => {
+    if (!isExamRunning()) return;
+
+    event.preventDefault();
+    if (session.dialogOpen) return;
+
+    session.dialogOpen = true;
+    dialog
+      .showMessageBox(win, {
+        type: "warning",
+        title: "Test in progress",
+        message: "You can't close Athena during the test.",
+        detail: "Use End Test to submit your answers first.",
+        buttons: ["OK"],
+      })
+      .finally(() => {
+        session.dialogOpen = false;
+      });
+  });
+
   win.on("blur", () => {
     if (session.dialogOpen) return;
     // Clicking into the detached DevTools isn't the student leaving.
@@ -83,6 +106,90 @@ function getDataDir(name) {
   return dir;
 }
 
+// The running session is mirrored to this file after every change, so if
+// Athena crashes or is force quit the student comes back to the same exam
+// (same timer, answers and warnings) instead of a fresh one.
+function getSessionFile() {
+  return path.join(getDataDir("sessions"), "active.json");
+}
+
+function saveSession() {
+  if (!isExamRunning()) return;
+
+  const data = {
+    id: session.id,
+    student: session.student,
+    startedAt: session.startedAt,
+    endTime: session.endTime,
+    answers: session.answers,
+    flagged: [...session.flagged],
+    violations: session.violations,
+  };
+
+  // Write then rename, so a crash mid-write can't leave a half-written file.
+  const file = getSessionFile();
+  fs.writeFileSync(`${file}.tmp`, JSON.stringify(data, null, 2));
+  fs.renameSync(`${file}.tmp`, file);
+}
+
+function clearSavedSession() {
+  fs.rmSync(getSessionFile(), { force: true });
+}
+
+function readSavedSession() {
+  let data;
+  try {
+    data = JSON.parse(fs.readFileSync(getSessionFile(), "utf8"));
+  } catch {
+    return null;
+  }
+
+  const valid =
+    typeof data?.id === "string" &&
+    typeof data.student?.name === "string" &&
+    typeof data.student?.rollNumber === "string" &&
+    Number.isFinite(data.startedAt) &&
+    Number.isFinite(data.endTime);
+
+  return valid ? data : null;
+}
+
+function countSnapshots(sessionId) {
+  try {
+    return fs.readdirSync(path.join(getDataDir("camera_feed"), sessionId))
+      .length;
+  } catch {
+    return 0;
+  }
+}
+
+// Picks up a session saved by a previous run. If its time ran out while
+// Athena was closed it's submitted straight away; otherwise the exam carries
+// on and the restart is logged as a warning.
+function restoreSession() {
+  const saved = readSavedSession();
+  if (!saved) return;
+
+  session.id = saved.id;
+  session.student = saved.student;
+  session.startedAt = saved.startedAt;
+  session.endTime = saved.endTime;
+  session.answers = saved.answers ?? {};
+  session.flagged = new Set(saved.flagged ?? []);
+  session.violations = Array.isArray(saved.violations) ? saved.violations : [];
+  session.snapshotCount = countSnapshots(saved.id);
+
+  const remaining = session.endTime - Date.now();
+  if (remaining <= 0) {
+    finishExam("timeout");
+    return;
+  }
+
+  session.timeoutHandle = setTimeout(() => finishExam("timeout"), remaining);
+  win.kiosk = true;
+  recordViolation("app-restarted");
+}
+
 function cleanField(value) {
   if (typeof value !== "string") return "";
   return value.trim().replace(/\s+/g, " ").slice(0, MAX_FIELD_LENGTH);
@@ -105,16 +212,26 @@ function recordViolation(type) {
   const violation = { type, at: Date.now() };
   session.violations.push(violation);
 
-  const limitReached = session.violations.length >= MAX_VIOLATIONS;
+  saveSession();
 
-  win.webContents.send("violation", {
-    violation,
-    count: session.violations.length,
+  const warning = getLatestWarning();
+  win.webContents.send("violation", warning);
+
+  if (warning.limitReached) finishExam("violations");
+}
+
+// The banner MainExam shows for the most recent warning, or null if there
+// hasn't been one.
+function getLatestWarning() {
+  const count = session.violations.length;
+  if (count === 0) return null;
+
+  return {
+    violation: session.violations[count - 1],
+    count,
     max: MAX_VIOLATIONS,
-    limitReached,
-  });
-
-  if (limitReached) finishExam("violations");
+    limitReached: count >= MAX_VIOLATIONS,
+  };
 }
 
 // Grades the saved answers, writes the result file and tells the renderer.
@@ -140,6 +257,7 @@ function finishExam(reason) {
 
   const resultPath = path.join(getDataDir("results"), `${session.id}.json`);
   fs.writeFileSync(resultPath, JSON.stringify(session.result, null, 2));
+  clearSavedSession();
 
   // The exam is over, so the student shouldn't be stuck in kiosk mode.
   win.kiosk = false;
@@ -206,6 +324,7 @@ ipcMain.handle("start-test", (_event, student) => {
     () => finishExam("timeout"),
     EXAM_DURATION_MS,
   );
+  saveSession();
 
   return session.id;
 });
@@ -227,6 +346,7 @@ ipcMain.handle("get-session", () => {
     student: session.student,
     answers: session.answers,
     flagged: [...session.flagged],
+    warning: getLatestWarning(),
     result: session.result,
   };
 });
@@ -285,13 +405,14 @@ ipcMain.handle("save-answer", (_event, id, optionIndex) => {
 
   if (optionIndex === null) {
     delete session.answers[id];
-    return true;
+  } else {
+    if (!Number.isInteger(optionIndex)) return false;
+    if (optionIndex < 0 || optionIndex >= q.options.length) return false;
+
+    session.answers[id] = optionIndex;
   }
 
-  if (!Number.isInteger(optionIndex)) return false;
-  if (optionIndex < 0 || optionIndex >= q.options.length) return false;
-
-  session.answers[id] = optionIndex;
+  saveSession();
   return true;
 });
 
@@ -301,6 +422,7 @@ ipcMain.handle("set-flag", (_event, id, flagged) => {
 
   if (flagged) session.flagged.add(id);
   else session.flagged.delete(id);
+  saveSession();
   return true;
 });
 
@@ -336,6 +458,7 @@ ipcMain.handle("save-photo", (_event, image) => {
 app.whenReady().then(() => {
   nativeTheme.themeSource = "system";
   createWindow();
+  restoreSession();
 });
 
 app.on("window-all-closed", () => {

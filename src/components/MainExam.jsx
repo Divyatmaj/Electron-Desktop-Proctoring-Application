@@ -18,7 +18,8 @@ function MainExam({ examInfo, initialProgress, stream, timeLeftMs }) {
   const [flagged, setFlagged] = useState(() => new Set(initialProgress.flagged));
   const [submitting, setSubmitting] = useState(false);
   // Latest { violation, count, max } from the main process, shown as a banner.
-  const [warning, setWarning] = useState(null);
+  // Starts from the saved one so a resumed exam still shows it.
+  const [warning, setWarning] = useState(initialProgress.warning);
 
   // A ref rather than state so a double click on Submit can't send twice.
   const submittedRef = useRef(false);

@@ -7,6 +7,7 @@ A desktop application for exam proctoring, built with React, Vite, and Electron.
 
 - Pre-exam checklist: student details, camera, full screen and exam rules
 - Kiosk-mode exam window with a server-side (main process) timer
+- Crash-safe sessions: a force-quit or crashed exam resumes where it left off
 - Question navigator, keyboard shortcuts and automatic submit on timeout
 - Grading in the main process, so correct answers never reach the renderer
 - Periodic webcam snapshots, stored per exam session
@@ -60,6 +61,10 @@ Everything goes in Electron's per-user data folder
 `%APPDATA%\athena-proctoring` on Windows):
 
 - `results/<sessionId>.json`: score, answers, student details and timing
+- `sessions/active.json`: the exam in progress, removed once it's submitted.
+  If Athena crashes or is force quit, the next launch resumes this session
+  (same timer, answers and warnings) and logs the restart as a warning.
+  Delete it to throw away an unfinished session, e.g. while testing.
 - `camera_feed/<sessionId>/photo-<timestamp>.jpg`: webcam snapshots
 
 The session ID is the student's roll number plus the start time, so a result
