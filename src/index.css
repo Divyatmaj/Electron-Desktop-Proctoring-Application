@@ -24,6 +24,8 @@
   --bad: #ad4630;
   --bad-soft: #f5e5e0;
   --rec: #c2412b;
+  --flag: #9a6410;
+  --flag-soft: #f6ead3;
 
   --font-sans:
     -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial,
@@ -62,6 +64,8 @@
     --bad: #e3907a;
     --bad-soft: #3a2521;
     --rec: #ef6b55;
+    --flag: #e2b464;
+    --flag-soft: #3a2f1c;
 
     --shadow: none;
   }

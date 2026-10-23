@@ -6,11 +6,13 @@ contextBridge.exposeInMainWorld("electronAPI", {
   getExamInfo: () => ipcRenderer.invoke("get-exam-info"),
   getRemainingTime: () => ipcRenderer.invoke("get-time"),
   startTest: (student) => ipcRenderer.invoke("start-test", student),
+  getSession: () => ipcRenderer.invoke("get-session"),
   getQuestion: (id) => ipcRenderer.invoke("get-question", id),
-  confirmEndTest: (unanswered) =>
-    ipcRenderer.invoke("confirm-end-test", unanswered),
-  submitTest: (answers, reason) =>
-    ipcRenderer.invoke("submit-test", answers, reason),
+  saveAnswer: (id, optionIndex) =>
+    ipcRenderer.invoke("save-answer", id, optionIndex),
+  setFlag: (id, flagged) => ipcRenderer.invoke("set-flag", id, flagged),
+  confirmEndTest: () => ipcRenderer.invoke("confirm-end-test"),
+  submitTest: () => ipcRenderer.invoke("submit-test"),
   savePhoto: (image) => ipcRenderer.invoke("save-photo", image),
   reportViolation: (type) => ipcRenderer.invoke("report-violation", type),
   // Returns an unsubscribe function so React effects can clean up.
@@ -18,6 +20,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
     const listener = (_event, data) => callback(data);
     ipcRenderer.on("violation", listener);
     return () => ipcRenderer.removeListener("violation", listener);
+  },
+  onExamFinished: (callback) => {
+    const listener = (_event, result) => callback(result);
+    ipcRenderer.on("exam-finished", listener);
+    return () => ipcRenderer.removeListener("exam-finished", listener);
   },
   quitApp: () => ipcRenderer.invoke("quit-app"),
 });

@@ -273,6 +273,12 @@
   color: var(--ok);
 }
 
+.badge-flag {
+  background: var(--flag-soft);
+  border-color: transparent;
+  color: var(--flag);
+}
+
 .badge-bad {
   background: var(--bad-soft);
   border-color: transparent;
@@ -776,11 +782,22 @@
   color: var(--on-ink);
 }
 
+.question-tools {
+  display: flex;
+  gap: 8px;
+
+  margin-top: 16px;
+}
+
+.flag-toggle.is-on {
+  color: var(--flag);
+}
+
 .question-nav {
   display: flex;
   justify-content: space-between;
 
-  margin-top: 30px;
+  margin-top: 22px;
 }
 
 /* Sidebar */
@@ -837,13 +854,32 @@
   color: var(--ink);
 }
 
+.palette-item.is-flagged {
+  position: relative;
+}
+
+.palette-item.is-flagged::after {
+  content: "";
+
+  position: absolute;
+  top: 3px;
+  right: 3px;
+
+  width: 6px;
+  height: 6px;
+
+  border-radius: 50%;
+  background: var(--flag);
+}
+
 .palette-item.is-current {
   box-shadow: 0 0 0 2px var(--ink);
 }
 
 .legend {
   display: flex;
-  gap: 14px;
+  flex-wrap: wrap;
+  gap: 6px 14px;
 
   margin-top: 14px;
 
@@ -870,6 +906,11 @@
 .legend-swatch.is-answered {
   border-color: var(--ink-line);
   background: var(--ink-soft);
+}
+
+.legend-swatch.is-flagged {
+  border-color: var(--flag);
+  background: var(--flag-soft);
 }
 
 .shortcut-hint {
@@ -942,6 +983,55 @@ kbd {
 .results-stats dd {
   font-size: 17px;
   font-weight: 600;
+}
+
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+
+  margin-bottom: 14px;
+}
+
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+
+  padding: 5px 12px;
+
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
+
+  cursor: pointer;
+}
+
+.filter-chip:hover {
+  color: var(--text);
+}
+
+.filter-chip.is-active {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--on-ink);
+}
+
+.filter-count {
+  font-variant-numeric: tabular-nums;
+  opacity: 0.75;
+}
+
+.review-empty {
+  padding: 20px 0;
+
+  font-size: 14px;
+  color: var(--text-muted);
 }
 
 .incident-list {

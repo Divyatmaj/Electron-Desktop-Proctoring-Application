@@ -20,9 +20,51 @@ function App() {
   const [stream, setStream] = useState(null);
   const [timeLeft, setTimeLeft] = useState(null);
   const [result, setResult] = useState(null);
+  // Answers and flags saved in the main process, used to restore the exam
+  // screen if the window reloads mid-test.
+  const [progress, setProgress] = useState(null);
 
   useEffect(() => {
-    window.electronAPI.getExamInfo().then(setExamInfo);
+    let cancelled = false;
+
+    async function load() {
+      const [info, session] = await Promise.all([
+        window.electronAPI.getExamInfo(),
+        window.electronAPI.getSession(),
+      ]);
+      if (cancelled) return;
+
+      setExamInfo(info);
+
+      if (session.status === "finished") {
+        setResult(session.result);
+        setStage("results");
+      } else if (session.status === "running") {
+        setStudent(session.student);
+        setProgress({ answers: session.answers, flagged: session.flagged });
+        setStage("exam");
+        resumeCamera();
+      }
+    }
+
+    // Camera permission was already granted before the reload, so this
+    // normally succeeds without asking. If it doesn't, that's logged.
+    async function resumeCamera() {
+      try {
+        const newStream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+        });
+        if (!cancelled) setStream(newStream);
+      } catch {
+        window.electronAPI.reportViolation("camera-lost");
+      }
+    }
+
+    load();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -80,6 +122,7 @@ function App() {
     if (!sessionId) return false;
 
     setStudent(details);
+    setProgress({ answers: {}, flagged: [] });
     setStage("exam");
     return true;
   }
@@ -88,6 +131,11 @@ function App() {
     setResult(examResult);
     setStage("results");
   }, []);
+
+  // The main process ends the exam itself on timeout or too many warnings.
+  useEffect(() => window.electronAPI.onExamFinished(handleSubmitted), [
+    handleSubmitted,
+  ]);
 
   return (
     <div className="app">
@@ -108,12 +156,12 @@ function App() {
           />
         )}
 
-        {examInfo && stage === "exam" && (
+        {examInfo && stage === "exam" && progress && (
           <MainExam
             examInfo={examInfo}
+            initialProgress={progress}
             stream={stream}
             timeLeftMs={timeLeft}
-            onSubmitted={handleSubmitted}
           />
         )}
 

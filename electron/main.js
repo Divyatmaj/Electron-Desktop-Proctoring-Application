@@ -27,6 +27,11 @@ const session = {
   student: null,
   snapshotCount: 0,
   violations: [],
+  // Saved as the student picks them, so a reloaded or crashed renderer can
+  // pick up where it left off. { [questionId]: optionIndex }
+  answers: {},
+  flagged: new Set(),
+  timeoutHandle: null,
   // True while one of our own native dialogs is up, since that also takes
   // focus away from the window and shouldn't count against the student.
   dialogOpen: false,
@@ -100,12 +105,47 @@ function recordViolation(type) {
   const violation = { type, at: Date.now() };
   session.violations.push(violation);
 
+  const limitReached = session.violations.length >= MAX_VIOLATIONS;
+
   win.webContents.send("violation", {
     violation,
     count: session.violations.length,
     max: MAX_VIOLATIONS,
-    limitReached: session.violations.length >= MAX_VIOLATIONS,
+    limitReached,
   });
+
+  if (limitReached) finishExam("violations");
+}
+
+// Grades the saved answers, writes the result file and tells the renderer.
+// Every way an exam can end (button, timer, warnings) comes through here, so
+// it only ever runs once.
+function finishExam(reason) {
+  if (session.result) return session.result;
+
+  clearTimeout(session.timeoutHandle);
+  const submittedAt = Date.now();
+
+  session.result = {
+    sessionId: session.id,
+    student: session.student,
+    ...gradeAnswers(session.answers),
+    reason,
+    startedAt: session.startedAt,
+    submittedAt,
+    durationMs: Math.min(submittedAt, session.endTime) - session.startedAt,
+    snapshotCount: session.snapshotCount,
+    violations: session.violations,
+  };
+
+  const resultPath = path.join(getDataDir("results"), `${session.id}.json`);
+  fs.writeFileSync(resultPath, JSON.stringify(session.result, null, 2));
+
+  // The exam is over, so the student shouldn't be stuck in kiosk mode.
+  win.kiosk = false;
+  win.webContents.send("exam-finished", session.result);
+
+  return session.result;
 }
 
 function gradeAnswers(answers) {
@@ -119,6 +159,7 @@ function gradeAnswers(answers) {
       selected,
       correct: q.answer,
       isCorrect: selected === q.answer,
+      flagged: session.flagged.has(q.id),
     };
   });
 
@@ -161,6 +202,10 @@ ipcMain.handle("start-test", (_event, student) => {
   session.startedAt = Date.now();
   session.endTime = session.startedAt + EXAM_DURATION_MS;
   session.id = makeSessionId(rollNumber, session.startedAt);
+  session.timeoutHandle = setTimeout(
+    () => finishExam("timeout"),
+    EXAM_DURATION_MS,
+  );
 
   return session.id;
 });
@@ -171,11 +216,36 @@ ipcMain.handle("get-time", () => {
   return Math.max(0, session.endTime - Date.now());
 });
 
-ipcMain.handle("confirm-end-test", async (_event, unanswered) => {
+// Everything the renderer needs to rebuild the screen after a reload.
+ipcMain.handle("get-session", () => {
+  let status = "idle";
+  if (session.result) status = "finished";
+  else if (session.startedAt !== null) status = "running";
+
+  return {
+    status,
+    student: session.student,
+    answers: session.answers,
+    flagged: [...session.flagged],
+    result: session.result,
+  };
+});
+
+function plural(count, word) {
+  return `${count} ${word}${count === 1 ? "" : "s"}`;
+}
+
+ipcMain.handle("confirm-end-test", async () => {
+  const unanswered = questions.length - Object.keys(session.answers).length;
+  const flagged = session.flagged.size;
+
+  const notes = [];
+  if (unanswered > 0) notes.push(`${plural(unanswered, "question")} unanswered`);
+  if (flagged > 0) notes.push(`${flagged} marked for review`);
+
   const detail =
-    unanswered > 0
-      ? `You still have ${unanswered} unanswered question${unanswered === 1 ? "" : "s"}. You can't change your answers after submitting.`
-      : "You can't change your answers after submitting.";
+    (notes.length > 0 ? `You have ${notes.join(" and ")}. ` : "") +
+    "You can't change your answers after submitting.";
 
   session.dialogOpen = true;
 
@@ -207,33 +277,36 @@ ipcMain.handle("report-violation", (_event, type) => {
   if (RENDERER_VIOLATIONS.has(type)) recordViolation(type);
 });
 
-const SUBMIT_REASONS = new Set(["manual", "timeout", "violations"]);
+ipcMain.handle("save-answer", (_event, id, optionIndex) => {
+  if (!isExamRunning()) return false;
 
-ipcMain.handle("submit-test", (_event, answers, reason) => {
+  const q = questions.find((item) => item.id === id);
+  if (!q) return false;
+
+  if (optionIndex === null) {
+    delete session.answers[id];
+    return true;
+  }
+
+  if (!Number.isInteger(optionIndex)) return false;
+  if (optionIndex < 0 || optionIndex >= q.options.length) return false;
+
+  session.answers[id] = optionIndex;
+  return true;
+});
+
+ipcMain.handle("set-flag", (_event, id, flagged) => {
+  if (!isExamRunning()) return false;
+  if (!questions.some((item) => item.id === id)) return false;
+
+  if (flagged) session.flagged.add(id);
+  else session.flagged.delete(id);
+  return true;
+});
+
+ipcMain.handle("submit-test", () => {
   if (session.startedAt === null) return null;
-  if (session.result) return session.result;
-
-  const submittedAt = Date.now();
-
-  session.result = {
-    sessionId: session.id,
-    student: session.student,
-    ...gradeAnswers(answers ?? {}),
-    reason: SUBMIT_REASONS.has(reason) ? reason : "manual",
-    startedAt: session.startedAt,
-    submittedAt,
-    durationMs: Math.min(submittedAt, session.endTime) - session.startedAt,
-    snapshotCount: session.snapshotCount,
-    violations: session.violations,
-  };
-
-  const resultPath = path.join(getDataDir("results"), `${session.id}.json`);
-  fs.writeFileSync(resultPath, JSON.stringify(session.result, null, 2));
-
-  // The exam is over, so the student shouldn't be stuck in kiosk mode.
-  win.kiosk = false;
-
-  return session.result;
+  return finishExam("manual");
 });
 
 ipcMain.handle("quit-app", () => {

@@ -27,6 +27,14 @@ export function CheckIcon(props) {
   );
 }
 
+export function FlagIcon(props) {
+  return (
+    <Icon {...props}>
+      <path d="M3.5 14V2.5M3.5 3h8l-1.75 3 1.75 3h-8" />
+    </Icon>
+  );
+}
+
 export function MinimizeIcon(props) {
   return (
     <Icon {...props}>
