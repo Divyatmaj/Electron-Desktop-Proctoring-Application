@@ -4,6 +4,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   setFullScreen: () => ipcRenderer.invoke("full-screen"),
   minimizeWindow: () => ipcRenderer.invoke("window-minimize"),
   getExamInfo: () => ipcRenderer.invoke("get-exam-info"),
+  getDisplayCount: () => ipcRenderer.invoke("get-display-count"),
   getRemainingTime: () => ipcRenderer.invoke("get-time"),
   startTest: (student) => ipcRenderer.invoke("start-test", student),
   getSession: () => ipcRenderer.invoke("get-session"),
@@ -20,6 +21,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
     const listener = (_event, data) => callback(data);
     ipcRenderer.on("violation", listener);
     return () => ipcRenderer.removeListener("violation", listener);
+  },
+  onDisplaysChanged: (callback) => {
+    const listener = (_event, count) => callback(count);
+    ipcRenderer.on("displays-changed", listener);
+    return () => ipcRenderer.removeListener("displays-changed", listener);
   },
   onExamFinished: (callback) => {
     const listener = (_event, result) => callback(result);

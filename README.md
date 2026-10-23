@@ -7,6 +7,10 @@ A desktop application for exam proctoring, built with React, Vite, and Electron.
 
 - Pre-exam checklist: student details, camera, full screen and exam rules
 - Kiosk-mode exam window with a server-side (main process) timer
+- Locked-down window: one instance only, sandboxed renderer, no DevTools,
+  reload or navigation in packaged builds, camera as the only permission and
+  a strict Content Security Policy
+- Single-display check before the test and during it
 - Crash-safe sessions: a force-quit or crashed exam resumes where it left off
 - Question navigator, keyboard shortcuts and automatic submit on timeout
 - Grading in the main process, so correct answers never reach the renderer
@@ -51,6 +55,8 @@ Edit `electron/data/exam.json`:
 | `title` | Shown on the setup screen and exam bar |
 | `durationMinutes` | Length of the exam |
 | `snapshotIntervalSeconds` | How often a webcam snapshot is saved |
+| `maxViolations` | Warnings allowed before the test is submitted automatically |
+| `requireSingleDisplay` | Block the start while more than one display is connected and log a warning if one is plugged in mid-test (default `true`) |
 | `rules` | Rules the student must accept before starting |
 | `questions` | `{ id, question, options, answer }`, where `answer` is the index of the correct option |
 

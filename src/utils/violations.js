@@ -2,6 +2,7 @@ const LABELS = {
   "focus-lost": "Left the Athena window",
   "fullscreen-exited": "Exited full screen",
   "camera-lost": "Camera disconnected",
+  "extra-display": "Connected another display",
   "app-restarted": "Athena was closed and reopened",
 };
 

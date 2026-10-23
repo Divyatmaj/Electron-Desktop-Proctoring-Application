@@ -1,4 +1,12 @@
-const { BrowserWindow, app, ipcMain, dialog, nativeTheme } = require("electron");
+const {
+  BrowserWindow,
+  Menu,
+  app,
+  ipcMain,
+  dialog,
+  nativeTheme,
+  screen,
+} = require("electron");
 const path = require("path");
 const fs = require("fs");
 
@@ -9,6 +17,9 @@ const EXAM_DURATION_MS = exam.durationMinutes * 60 * 1000;
 const SNAPSHOT_INTERVAL_MS = (exam.snapshotIntervalSeconds ?? 5) * 1000;
 const MAX_FIELD_LENGTH = 80;
 const MAX_VIOLATIONS = exam.maxViolations ?? 3;
+// A second monitor makes it easy to keep notes in view, so by default the
+// test can't start with one connected and plugging one in is a warning.
+const REQUIRE_SINGLE_DISPLAY = exam.requireSingleDisplay ?? true;
 
 // Violations the renderer is allowed to report. Window focus and full screen
 // are watched here in the main process, where the renderer can't fake them.
@@ -49,8 +60,26 @@ function createWindow() {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
       nodeIntegration: false,
+      sandbox: true,
+      // In a packaged build DevTools would let the student call the exam API
+      // directly, so they're only available with --dev.
+      devTools: isDev,
     },
   });
+
+  // The window only ever shows Athena: no following links, no popups.
+  win.webContents.on("will-navigate", (event) => event.preventDefault());
+  win.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
+
+  // The camera is the only permission Athena needs, so everything else
+  // (microphone, notifications, geolocation...) is refused.
+  const ses = win.webContents.session;
+  ses.setPermissionRequestHandler((_wc, permission, callback, details) => {
+    const mediaTypes = details.mediaTypes ?? [];
+    const videoOnly = mediaTypes.every((type) => type === "video");
+    callback(permission === "media" && videoOnly);
+  });
+  ses.setPermissionCheckHandler((_wc, permission) => permission === "media");
 
   // Closing the window mid-test would throw the exam away, so the only way
   // out is End Test. A force quit is still possible, which is why the
@@ -190,6 +219,33 @@ function restoreSession() {
   recordViolation("app-restarted");
 }
 
+// The default menu has Reload, Toggle DevTools and Quit shortcuts. Packaged
+// builds keep only the Edit menu so copy and paste still work on macOS.
+function setUpMenu() {
+  if (isDev) return;
+
+  const menu =
+    process.platform === "darwin"
+      ? Menu.buildFromTemplate([{ role: "editMenu" }])
+      : null;
+  Menu.setApplicationMenu(menu);
+}
+
+function getDisplayCount() {
+  return screen.getAllDisplays().length;
+}
+
+function watchDisplays() {
+  screen.on("display-added", () => {
+    win.webContents.send("displays-changed", getDisplayCount());
+    if (REQUIRE_SINGLE_DISPLAY) recordViolation("extra-display");
+  });
+
+  screen.on("display-removed", () => {
+    win.webContents.send("displays-changed", getDisplayCount());
+  });
+}
+
 function cleanField(value) {
   if (typeof value !== "string") return "";
   return value.trim().replace(/\s+/g, " ").slice(0, MAX_FIELD_LENGTH);
@@ -306,6 +362,7 @@ ipcMain.handle("get-exam-info", () => {
     durationMs: EXAM_DURATION_MS,
     snapshotIntervalMs: SNAPSHOT_INTERVAL_MS,
     maxViolations: MAX_VIOLATIONS,
+    requireSingleDisplay: REQUIRE_SINGLE_DISPLAY,
   };
 });
 
@@ -315,6 +372,7 @@ ipcMain.handle("start-test", (_event, student) => {
   const name = cleanField(student?.name);
   const rollNumber = cleanField(student?.rollNumber);
   if (!name || !rollNumber) return null;
+  if (REQUIRE_SINGLE_DISPLAY && getDisplayCount() > 1) return null;
 
   session.student = { name, rollNumber };
   session.startedAt = Date.now();
@@ -328,6 +386,8 @@ ipcMain.handle("start-test", (_event, student) => {
 
   return session.id;
 });
+
+ipcMain.handle("get-display-count", () => getDisplayCount());
 
 ipcMain.handle("get-time", () => {
   if (session.endTime === null) return 0;
@@ -455,11 +515,25 @@ ipcMain.handle("save-photo", (_event, image) => {
   return filePath;
 });
 
-app.whenReady().then(() => {
-  nativeTheme.themeSource = "system";
-  createWindow();
-  restoreSession();
-});
+// Two copies of Athena would mean two sessions writing the same files, so a
+// second launch just brings the existing window forward.
+if (!app.requestSingleInstanceLock()) {
+  app.quit();
+} else {
+  app.on("second-instance", () => {
+    if (!win) return;
+    if (win.isMinimized()) win.restore();
+    win.focus();
+  });
+
+  app.whenReady().then(() => {
+    nativeTheme.themeSource = "system";
+    setUpMenu();
+    createWindow();
+    watchDisplays();
+    restoreSession();
+  });
+}
 
 app.on("window-all-closed", () => {
   app.quit();

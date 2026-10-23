@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import CameraPreview from "./CameraPreview";
 import HelpDialog from "./HelpDialog";
 import { CheckIcon } from "./Icons";
@@ -48,10 +48,22 @@ function SetupScreen({ examInfo, stream, onCameraReady, onStart }) {
   const [agreed, setAgreed] = useState(false);
   const [starting, setStarting] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [displayCount, setDisplayCount] = useState(null);
+
+  // Kept live, so the step ticks itself off as soon as an extra monitor is
+  // unplugged.
+  useEffect(() => {
+    if (!examInfo.requireSingleDisplay) return;
+
+    window.electronAPI.getDisplayCount().then(setDisplayCount);
+    return window.electronAPI.onDisplaysChanged(setDisplayCount);
+  }, [examInfo.requireSingleDisplay]);
 
   const detailsReady = name.trim() !== "" && rollNumber.trim() !== "";
   const cameraReady = stream !== null;
+  const singleDisplay = displayCount === 1;
   const checks = [detailsReady, cameraReady, fullscreen, agreed];
+  if (examInfo.requireSingleDisplay) checks.push(singleDisplay);
   const doneCount = checks.filter(Boolean).length;
   const canStart = doneCount === checks.length && !starting;
   const firstName = name.trim().split(" ")[0];
@@ -97,8 +109,8 @@ function SetupScreen({ examInfo, stream, onCameraReady, onStart }) {
           {examInfo.totalQuestions} questions · {minutes} minutes
         </p>
         <p className="page-lede">
-          {detailsReady ? `Hi ${firstName}! ` : ""}Finish the four checks
-          below. You can start once they're all done.
+          {detailsReady ? `Hi ${firstName}! ` : ""}Finish the {checks.length}{" "}
+          checks below. You can start once they're all done.
         </p>
       </header>
 
@@ -182,8 +194,24 @@ function SetupScreen({ examInfo, stream, onCameraReady, onStart }) {
           )}
         </Step>
 
+        {examInfo.requireSingleDisplay && (
+          <Step
+            number={4}
+            done={singleDisplay}
+            title="One screen"
+            description="Only one display can be connected during the test. Plugging one in while the test is running counts as a warning."
+          >
+            {displayCount > 1 && (
+              <p className="inline-error" role="alert">
+                {displayCount} displays are connected. Unplug the extra ones
+                (or turn off screen mirroring) to continue.
+              </p>
+            )}
+          </Step>
+        )}
+
         <Step
-          number={4}
+          number={examInfo.requireSingleDisplay ? 5 : 4}
           done={agreed}
           title="Exam rules"
           description="Read these before you begin."

@@ -18,6 +18,12 @@ const TOPICS = [
     ],
   },
   {
+    title: "“One screen” won't tick",
+    body: [
+      "Unplug any extra monitors, projectors or TVs, and turn off screen mirroring. The step updates by itself once only one display is left.",
+    ],
+  },
+  {
     title: "Full screen didn't work",
     body: [
       "Press “Enter full screen” once more. If the window still isn't full screen, restart Athena and try again.",
@@ -32,7 +38,7 @@ const TOPICS = [
       "Every answer is saved as soon as you pick it. If Athena closes unexpectedly, open it again to carry on: your answers and the timer are kept, and the restart is logged as a warning.",
       "You can't close Athena during the test. Use End Test to submit.",
       "If time runs out, whatever you've answered is submitted automatically.",
-      "Switching to another window, leaving full screen or losing the camera shows a warning and is logged. After the last warning your test is submitted for you.",
+      "Switching to another window, leaving full screen, connecting another display or losing the camera shows a warning and is logged. After the last warning your test is submitted for you.",
     ],
   },
   {
