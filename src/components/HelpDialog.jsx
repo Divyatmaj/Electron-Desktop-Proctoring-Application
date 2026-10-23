@@ -37,8 +37,8 @@ const TOPICS = [
       "Not sure about an answer? Press “Mark for review” (or F) to flag it. Flagged questions get a dot in the question panel, and “Clear answer” removes your choice.",
       "Every answer is saved as soon as you pick it. If Athena closes unexpectedly, open it again to carry on: your answers and the timer are kept, and the restart is logged as a warning.",
       "You can't close Athena during the test. Use End Test to submit.",
-      "If time runs out, whatever you've answered is submitted automatically.",
-      "Switching to another window, leaving full screen, connecting another display or losing the camera shows a warning and is logged. After the last warning your test is submitted for you.",
+      "A notice appears when 5 minutes and 1 minute are left. If time runs out, whatever you've answered is submitted automatically.",
+      "Switching to another window, leaving full screen, connecting another display or losing the camera shows a warning and is logged along with a camera photo. After the last warning your test is submitted for you.",
     ],
   },
   {

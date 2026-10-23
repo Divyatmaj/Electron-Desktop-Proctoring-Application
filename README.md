@@ -14,8 +14,11 @@ A desktop application for exam proctoring, built with React, Vite, and Electron.
 - Crash-safe sessions: a force-quit or crashed exam resumes where it left off
 - Question navigator, keyboard shortcuts and automatic submit on timeout
 - Grading in the main process, so correct answers never reach the renderer
-- Periodic webcam snapshots, stored per exam session
-- Results screen with a per-question review
+- Periodic webcam snapshots, stored per exam session, plus a photo taken the
+  moment each warning is logged
+- Low-time notices at 5 minutes and 1 minute left
+- Results screen with a per-question review, warning photos and shortcuts to
+  the session's snapshot folder and result file
 
 ## Tech Stack
 
@@ -72,6 +75,9 @@ Everything goes in Electron's per-user data folder
   (same timer, answers and warnings) and logs the restart as a warning.
   Delete it to throw away an unfinished session, e.g. while testing.
 - `camera_feed/<sessionId>/photo-<timestamp>.jpg`: webcam snapshots
+- `camera_feed/<sessionId>/warning-<n>-<type>.jpg`: the photo taken for
+  warning number `n`. Its file name is also stored as `snapshot` on that
+  warning in the result file
 
 The session ID is the student's roll number plus the start time, so a result
 and its snapshots always share a name.

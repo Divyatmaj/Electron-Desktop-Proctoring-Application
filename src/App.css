@@ -686,6 +686,26 @@
   color: var(--text-muted);
 }
 
+.time-alert {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+
+  margin-bottom: 24px;
+  padding: 14px 18px;
+
+  background: var(--ink-soft);
+  border: 1px solid var(--ink-line);
+  border-radius: var(--radius);
+
+  font-size: 14px;
+}
+
+.time-alert strong {
+  color: var(--ink);
+}
+
 .exam-body {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 232px;
@@ -1051,6 +1071,13 @@ kbd {
   border-top: 1px solid var(--border);
 }
 
+.incident-photo {
+  height: auto;
+  margin-left: auto;
+
+  font-size: 13px;
+}
+
 .incident-time {
   font-family: var(--font-mono);
   color: var(--text-muted);
@@ -1119,6 +1146,14 @@ kbd {
 .results-session code {
   font-family: var(--font-mono);
   color: var(--text);
+}
+
+.results-files {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+
+  margin: 8px 0 0 -10px;
 }
 
 .results-footer {

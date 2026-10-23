@@ -15,6 +15,12 @@ contextBridge.exposeInMainWorld("electronAPI", {
   confirmEndTest: () => ipcRenderer.invoke("confirm-end-test"),
   submitTest: () => ipcRenderer.invoke("submit-test"),
   savePhoto: (image) => ipcRenderer.invoke("save-photo", image),
+  saveWarningPhoto: (number, image) =>
+    ipcRenderer.invoke("save-warning-photo", number, image),
+  openSnapshotsFolder: () => ipcRenderer.invoke("open-snapshots-folder"),
+  showResultFile: () => ipcRenderer.invoke("show-result-file"),
+  openWarningPhoto: (number) =>
+    ipcRenderer.invoke("open-warning-photo", number),
   reportViolation: (type) => ipcRenderer.invoke("report-violation", type),
   // Returns an unsubscribe function so React effects can clean up.
   onViolation: (callback) => {

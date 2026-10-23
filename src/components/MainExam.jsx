@@ -6,6 +6,12 @@ import { describeViolation } from "../utils/violations";
 
 const OPTION_LETTERS = ["A", "B", "C", "D", "E", "F"];
 const LOW_TIME_MS = 5 * 60 * 1000;
+// A notice appears as the timer passes each of these.
+const TIME_ALERTS_MS = [5 * 60 * 1000, 60 * 1000];
+
+function plural(count, word) {
+  return `${count} ${word}${count === 1 ? "" : "s"}`;
+}
 
 function MainExam({ examInfo, initialProgress, stream, timeLeftMs }) {
   const totalQuestions = examInfo.totalQuestions;
@@ -20,6 +26,9 @@ function MainExam({ examInfo, initialProgress, stream, timeLeftMs }) {
   // Latest { violation, count, max } from the main process, shown as a banner.
   // Starts from the saved one so a resumed exam still shows it.
   const [warning, setWarning] = useState(initialProgress.warning);
+  // The time alert the student last closed, so it stays closed until the
+  // next one is due.
+  const [dismissedAlert, setDismissedAlert] = useState(null);
 
   // A ref rather than state so a double click on Submit can't send twice.
   const submittedRef = useRef(false);
@@ -136,6 +145,16 @@ function MainExam({ examInfo, initialProgress, stream, timeLeftMs }) {
   const isFlagged = flagged.has(questionId);
   const isLastQuestion = questionId === totalQuestions;
   const isLowOnTime = timeLeftMs !== null && timeLeftMs < LOW_TIME_MS;
+  // The smallest threshold already passed. Thresholds longer than the exam
+  // itself are skipped so a short test doesn't open with an alert.
+  const timeAlert =
+    timeLeftMs > 0
+      ? TIME_ALERTS_MS.filter(
+          (ms) => timeLeftMs <= ms && ms < examInfo.durationMs,
+        ).at(-1)
+      : undefined;
+  const showTimeAlert =
+    timeAlert !== undefined && timeAlert !== dismissedAlert && !submitting;
   // Only render the question once it matches the current id, so a slow
   // load never shows the previous question's text under the new number.
   const shownQuestion = question?.id === questionId ? question : null;
@@ -193,6 +212,24 @@ function MainExam({ examInfo, initialProgress, stream, timeLeftMs }) {
               I understand
             </button>
           )}
+        </div>
+      )}
+
+      {showTimeAlert && (
+        <div className="time-alert" role="status">
+          <p>
+            <strong>{plural(timeAlert / 60000, "minute")} left.</strong>{" "}
+            Whatever you've answered is submitted automatically when the timer
+            reaches zero.
+          </p>
+
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => setDismissedAlert(timeAlert)}
+          >
+            OK
+          </button>
         </div>
       )}
 

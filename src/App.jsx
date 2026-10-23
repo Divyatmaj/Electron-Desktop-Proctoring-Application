@@ -7,6 +7,21 @@ import TitleBar from "./components/TitleBar";
 
 const SNAPSHOT_QUALITY = 0.8;
 
+// Draws the current camera frame and returns it as a JPEG data URL, or null
+// if the camera isn't producing frames.
+function captureFrame(video, canvas) {
+  if (!video || !canvas) return null;
+  if (video.videoWidth === 0) return null;
+
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(video, 0, 0);
+
+  return canvas.toDataURL("image/jpeg", SNAPSHOT_QUALITY);
+}
+
 function App() {
   // Hidden video + canvas used only for snapshots; visible previews are
   // separate <CameraPreview> elements fed from the same stream.
@@ -92,27 +107,28 @@ function App() {
   useEffect(() => {
     if (stage !== "exam" || !examInfo) return;
 
-    async function takePhoto() {
-      const video = videoRef.current;
-      const canvas = canvasRef.current;
-
-      if (!video || !canvas) return;
-      if (video.videoWidth === 0) return;
-
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-
-      const ctx = canvas.getContext("2d");
-      ctx.drawImage(video, 0, 0);
-
-      const image = canvas.toDataURL("image/jpeg", SNAPSHOT_QUALITY);
-      await window.electronAPI.savePhoto(image);
+    function takePhoto() {
+      const image = captureFrame(videoRef.current, canvasRef.current);
+      if (image) window.electronAPI.savePhoto(image);
     }
 
     const interval = setInterval(takePhoto, examInfo.snapshotIntervalMs);
 
     return () => clearInterval(interval);
   }, [stage, examInfo]);
+
+  // An extra photo the moment a warning is logged, linked to that warning in
+  // the result. A lost camera has nothing to show, so it's skipped.
+  useEffect(() => {
+    if (stage !== "exam") return;
+
+    return window.electronAPI.onViolation(({ violation, count }) => {
+      if (violation.type === "camera-lost") return;
+
+      const image = captureFrame(videoRef.current, canvasRef.current);
+      if (image) window.electronAPI.saveWarningPhoto(count, image);
+    });
+  }, [stage]);
 
   // Release the webcam once the exam is over so the camera light turns off.
   useEffect(() => {

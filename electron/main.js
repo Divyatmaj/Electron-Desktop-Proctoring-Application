@@ -6,6 +6,7 @@ const {
   dialog,
   nativeTheme,
   screen,
+  shell,
 } = require("electron");
 const path = require("path");
 const fs = require("fs");
@@ -183,10 +184,12 @@ function readSavedSession() {
   return valid ? data : null;
 }
 
+// Warning photos share the folder, so only the regular photos are counted.
 function countSnapshots(sessionId) {
   try {
-    return fs.readdirSync(path.join(getDataDir("camera_feed"), sessionId))
-      .length;
+    return fs
+      .readdirSync(path.join(getDataDir("camera_feed"), sessionId))
+      .filter((name) => name.startsWith("photo-")).length;
   } catch {
     return 0;
   }
@@ -311,8 +314,7 @@ function finishExam(reason) {
     violations: session.violations,
   };
 
-  const resultPath = path.join(getDataDir("results"), `${session.id}.json`);
-  fs.writeFileSync(resultPath, JSON.stringify(session.result, null, 2));
+  writeResult();
   clearSavedSession();
 
   // The exam is over, so the student shouldn't be stuck in kiosk mode.
@@ -320,6 +322,20 @@ function finishExam(reason) {
   win.webContents.send("exam-finished", session.result);
 
   return session.result;
+}
+
+function getResultPath() {
+  return path.join(getDataDir("results"), `${session.id}.json`);
+}
+
+function writeResult() {
+  fs.writeFileSync(getResultPath(), JSON.stringify(session.result, null, 2));
+}
+
+// One folder per exam session, so every snapshot can be traced back to the
+// result file with the same name.
+function getSnapshotDir() {
+  return getDataDir(path.join("camera_feed", session.id));
 }
 
 function gradeAnswers(answers) {
@@ -497,22 +513,66 @@ ipcMain.handle("quit-app", () => {
 
 const JPEG_PREFIX = "data:image/jpeg;base64,";
 
+function decodeJpeg(image) {
+  if (typeof image !== "string" || !image.startsWith(JPEG_PREFIX)) return null;
+  return Buffer.from(image.slice(JPEG_PREFIX.length), "base64");
+}
+
 ipcMain.handle("save-photo", (_event, image) => {
   if (session.id === null || session.result) return null;
-  if (typeof image !== "string" || !image.startsWith(JPEG_PREFIX)) return null;
 
-  const imageData = image.slice(JPEG_PREFIX.length);
+  const data = decodeJpeg(image);
+  if (!data) return null;
 
-  // One folder per exam session, so every snapshot can be traced back to the
-  // result file with the same name.
-  const filePath = path.join(
-    getDataDir(path.join("camera_feed", session.id)),
-    `photo-${Date.now()}.jpg`,
-  );
-  fs.writeFileSync(filePath, Buffer.from(imageData, "base64"));
+  const filePath = path.join(getSnapshotDir(), `photo-${Date.now()}.jpg`);
+  fs.writeFileSync(filePath, data);
   session.snapshotCount += 1;
 
   return filePath;
+});
+
+// The renderer takes a photo the moment it hears about a warning, so whoever
+// reviews the session can see what was going on. `number` is the warning's
+// 1-based position in the log; each warning gets at most one photo.
+ipcMain.handle("save-warning-photo", (_event, number, image) => {
+  const violation = session.violations[number - 1];
+  if (!violation || violation.snapshot) return null;
+
+  const data = decodeJpeg(image);
+  if (!data) return null;
+
+  const fileName = `warning-${number}-${violation.type}.jpg`;
+  fs.writeFileSync(path.join(getSnapshotDir(), fileName), data);
+  violation.snapshot = fileName;
+
+  // The last warning can end the exam before its photo arrives. The result
+  // shares this violations array, so it's written again and resent.
+  if (session.result) {
+    writeResult();
+    win.webContents.send("exam-finished", session.result);
+  } else {
+    saveSession();
+  }
+
+  return fileName;
+});
+
+// These open Finder/Explorer or an image viewer, which would take the
+// student out of the exam, so they only work once it's over.
+ipcMain.handle("open-snapshots-folder", () => {
+  if (!session.result) return;
+  shell.openPath(getSnapshotDir());
+});
+
+ipcMain.handle("show-result-file", () => {
+  if (!session.result) return;
+  shell.showItemInFolder(getResultPath());
+});
+
+ipcMain.handle("open-warning-photo", (_event, number) => {
+  const violation = session.violations[number - 1];
+  if (!session.result || !violation?.snapshot) return;
+  shell.openPath(path.join(getSnapshotDir(), violation.snapshot));
 });
 
 // Two copies of Athena would mean two sessions writing the same files, so a

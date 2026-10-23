@@ -76,9 +76,28 @@ function Results({ result }) {
           </div>
         </dl>
 
-        <p className="results-session">
-          Session ID <code>{result.sessionId}</code>
-        </p>
+        <div className="results-session">
+          <p>
+            Session ID <code>{result.sessionId}</code>
+          </p>
+
+          <div className="results-files">
+            <button
+              type="button"
+              className="btn btn-ghost"
+              onClick={() => window.electronAPI.openSnapshotsFolder()}
+            >
+              Open snapshots folder
+            </button>
+            <button
+              type="button"
+              className="btn btn-ghost"
+              onClick={() => window.electronAPI.showResultFile()}
+            >
+              Show result file
+            </button>
+          </div>
+        </div>
       </section>
 
       {result.violations.length > 0 && (
@@ -92,6 +111,17 @@ function Results({ result }) {
                   {formatClock(violation.at - result.startedAt)}
                 </span>
                 <span>{describeViolation(violation.type)}</span>
+                {violation.snapshot && (
+                  <button
+                    type="button"
+                    className="btn btn-ghost incident-photo"
+                    onClick={() =>
+                      window.electronAPI.openWarningPhoto(index + 1)
+                    }
+                  >
+                    View photo
+                  </button>
+                )}
               </li>
             ))}
           </ol>
