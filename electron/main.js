@@ -76,11 +76,18 @@ function createWindow() {
   // (microphone, notifications, geolocation...) is refused.
   const ses = win.webContents.session;
   ses.setPermissionRequestHandler((_wc, permission, callback, details) => {
+    // A request that names no media types could be anything, so it's refused.
     const mediaTypes = details.mediaTypes ?? [];
-    const videoOnly = mediaTypes.every((type) => type === "video");
+    const videoOnly =
+      mediaTypes.length > 0 && mediaTypes.every((type) => type === "video");
     callback(permission === "media" && videoOnly);
   });
-  ses.setPermissionCheckHandler((_wc, permission) => permission === "media");
+  // Checks must match the requests above, or the page is told the
+  // microphone is "granted" even though asking for it fails.
+  ses.setPermissionCheckHandler(
+    (_wc, permission, _origin, details) =>
+      permission === "media" && details.mediaType === "video",
+  );
 
   // Closing the window mid-test would throw the exam away, so the only way
   // out is End Test. A force quit is still possible, which is why the
