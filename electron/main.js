@@ -13,8 +13,15 @@ const fs = require("fs");
 
 const exam = require("./data/exam.json");
 
+const isDev = process.argv.includes("--dev");
+
 const DEV_SERVER_URL = "http://127.0.0.1:5173/";
-const EXAM_DURATION_MS = exam.durationMinutes * 60 * 1000;
+// ATHENA_EXAM_MINUTES=6 shortens the exam so the time notices can be tested
+// by hand. It only works with --dev, so a student can't set it.
+const DEV_EXAM_MINUTES = isDev ? Number(process.env.ATHENA_EXAM_MINUTES) : NaN;
+const EXAM_MINUTES =
+  DEV_EXAM_MINUTES > 0 ? DEV_EXAM_MINUTES : exam.durationMinutes;
+const EXAM_DURATION_MS = EXAM_MINUTES * 60 * 1000;
 const SNAPSHOT_INTERVAL_MS = (exam.snapshotIntervalSeconds ?? 5) * 1000;
 const MAX_FIELD_LENGTH = 80;
 const MAX_VIOLATIONS = exam.maxViolations ?? 3;
@@ -27,8 +34,6 @@ const REQUIRE_SINGLE_DISPLAY = exam.requireSingleDisplay ?? true;
 const RENDERER_VIOLATIONS = new Set(["camera-lost"]);
 
 const { questions } = exam;
-
-const isDev = process.argv.includes("--dev");
 
 let win = null;
 

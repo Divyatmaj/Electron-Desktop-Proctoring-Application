@@ -49,6 +49,13 @@ npm run start:built  # production build loaded from dist/
 npm test             # lint + build
 ```
 
+To test the 5 and 1 minute notices without waiting an hour, shorten the exam
+for a dev run (ignored outside `npm run dev`):
+
+```bash
+ATHENA_EXAM_MINUTES=6 npm run dev
+```
+
 ## Configuring the exam
 
 Edit `electron/data/exam.json`:
