@@ -69,7 +69,14 @@ npm install
 npm run dev          # Vite dev server + Electron with DevTools
 npm run start:built  # production build loaded from dist/
 npm test             # lint + build
+npm run dist:mac     # macOS installer at release/Athena-1.0.0-arm64.dmg
 ```
+
+The DMG is built for Apple Silicon and signed ad hoc, not with an Apple
+Developer ID, so the first time it's opened macOS blocks it. Right-click
+Athena in Applications, choose Open, then Open again (or allow it under
+System Settings › Privacy & Security). Downloaded copies may need
+`xattr -cr /Applications/Athena.app` first.
 
 To test the 5 and 1 minute notices without waiting an hour, shorten the exam
 for a dev run (ignored outside `npm run dev`):

@@ -24,17 +24,48 @@
     "lint": "eslint .",
     "check": "npm run lint && npm run build",
     "test": "npm run check",
-    "start:built": "npm run build && electron ."
+    "start:built": "npm run build && electron .",
+    "dist:mac": "npm run build && electron-builder --mac dmg"
   },
-  "dependencies": {
-    "react": "^19.3.1",
-    "react-dom": "^19.3.1"
+  "build": {
+    "appId": "com.divyatmaj.athena",
+    "productName": "Athena",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "electron/**",
+      "dist/**",
+      "package.json"
+    ],
+    "mac": {
+      "category": "public.app-category.education",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64"
+          ]
+        }
+      ],
+      "identity": "-",
+      "hardenedRuntime": false,
+      "extendInfo": {
+        "NSCameraUsageDescription": "Athena uses your camera to take snapshots during the exam so the session can be reviewed."
+      }
+    },
+    "dmg": {
+      "title": "Athena ${version}"
+    }
   },
   "devDependencies": {
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
     "@eslint/js": "^10.0.1",
     "@vitejs/plugin-react": "^6.1.2",
     "concurrently": "^10.0.6",
     "electron": "^44.9.1",
+    "electron-builder": "^26.18.0",
     "eslint": "^10.13.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.7",
