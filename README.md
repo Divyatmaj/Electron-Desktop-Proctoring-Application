@@ -1,12 +1,16 @@
-# Electron-Desktop-Proctoring-Application
 # Athena Proctoring
 
 A desktop application for exam proctoring, built with React, Vite, and Electron.
 
 ## Features
 
-- Pre-exam checklist: student details, camera, full screen and exam rules
-- Kiosk-mode exam window with a server-side (main process) timer
+- Pre-exam checklist: student details, camera, full screen, a single display
+  and exam rules
+- Kiosk-mode exam window with the timer kept in the main process
+- Warnings for leaving the window, exiting full screen, connecting another
+  display, losing the camera or restarting the app. Warnings within 2 seconds
+  of the last one count as part of it, and reaching the limit submits the
+  test automatically
 - Locked-down window: one instance only, sandboxed renderer, no DevTools,
   reload or navigation in packaged builds, camera as the only permission and
   a strict Content Security Policy
@@ -19,6 +23,14 @@ A desktop application for exam proctoring, built with React, Vite, and Electron.
 - Low-time notices at 5 minutes and 1 minute left
 - Results screen with a per-question review, warning photos and shortcuts to
   the session's snapshot folder and result file
+
+## Screenshots
+
+<!-- TODO: add screenshots to docs/screenshots/ and uncomment these.
+![Setup checklist](docs/screenshots/setup.png)
+![Exam with a warning](docs/screenshots/exam-warning.png)
+![Results](docs/screenshots/results.png)
+-->
 
 ## Tech Stack
 
@@ -88,3 +100,14 @@ Everything goes in Electron's per-user data folder
 
 The session ID is the student's roll number plus the start time, so a result
 and its snapshots always share a name.
+
+## Limitations and future work
+
+- Questions and their answers ship as plain JSON inside the app, so anyone
+  with access to the app's files can read them. A real deployment would fetch
+  the paper from a server when the exam starts.
+- Results and snapshots stay on the student's machine. Nothing is uploaded to
+  an invigilator.
+- Proctoring watches the window, displays and camera, but doesn't analyse the
+  camera feed (no face detection).
+- `npm test` runs lint and a production build; there are no unit tests yet.

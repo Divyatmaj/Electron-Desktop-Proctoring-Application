@@ -25,6 +25,10 @@ const EXAM_DURATION_MS = EXAM_MINUTES * 60 * 1000;
 const SNAPSHOT_INTERVAL_MS = (exam.snapshotIntervalSeconds ?? 5) * 1000;
 const MAX_FIELD_LENGTH = 80;
 const MAX_VIOLATIONS = exam.maxViolations ?? 3;
+// One action can trip several checks at once (plugging in a monitor can also
+// knock the window out of full screen and focus), so anything this soon
+// after the last warning is treated as part of it.
+const VIOLATION_GRACE_MS = 2000;
 // A second monitor makes it easy to keep notes in view, so by default the
 // test can't start with one connected and plugging one in is a warning.
 const REQUIRE_SINGLE_DISPLAY = exam.requireSingleDisplay ?? true;
@@ -279,6 +283,9 @@ function isExamRunning() {
 
 function recordViolation(type) {
   if (!isExamRunning()) return;
+
+  const last = session.violations.at(-1);
+  if (last && Date.now() - last.at < VIOLATION_GRACE_MS) return;
 
   const violation = { type, at: Date.now() };
   session.violations.push(violation);
