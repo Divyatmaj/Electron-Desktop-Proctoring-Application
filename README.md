@@ -26,11 +26,21 @@ A desktop application for exam proctoring, built with React, Vite, and Electron.
 
 ## Screenshots
 
-<!-- TODO: add screenshots to docs/screenshots/ and uncomment these.
-![Setup checklist](docs/screenshots/setup.png)
-![Exam with a warning](docs/screenshots/exam-warning.png)
-![Results](docs/screenshots/results.png)
--->
+**Pre-exam checklist**
+
+![Setup checklist with student details filled in](Screenshots/setup.png)
+
+**Camera check**
+
+![Camera step with a live preview](Screenshots/camera.png)
+
+**During the exam**: closing the window is blocked until the test is submitted
+
+![Exam screen with the close-blocked dialog](Screenshots/exam.png)
+
+**Results**
+
+![Results screen with score, stats and question review](Screenshots/results.png)
 
 ## Tech Stack
 
